@@ -45,10 +45,10 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     private void runPython(String query) throws IOException, InterruptedException {
         var pysparkPython = System.getenv("PYSPARK_PYTHON");
         var cmd = pysparkPython != null ? pysparkPython : "python3";
-        ProcessBuilder      pb  = new ProcessBuilder(cmd);
+        var     pb  = new ProcessBuilder(cmd);
         pb.redirectError(ProcessBuilder.Redirect.INHERIT);
         pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-        Map<String, String> env = pb.environment();
+        var env = pb.environment();
 
         var port = py4jServer.getListeningPort();
         var secret = py4jServer.secret();
@@ -63,10 +63,10 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     }
 
     private void runRscript(String query) throws IOException, InterruptedException {
-        ProcessBuilder      pb  = new ProcessBuilder("Rscript");
+        var pb  = new ProcessBuilder("Rscript");
         pb.redirectError(ProcessBuilder.Redirect.INHERIT);
         pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-        Map<String, String> env = pb.environment();
+        var env = pb.environment();
 
         env.put("EXISTING_SPARKR_BACKEND_PORT", Integer.toString(rbackendPort));
         env.put("SPARKR_BACKEND_AUTH_SECRET", rbackendSecret);
