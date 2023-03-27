@@ -99,6 +99,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     public void submitCode(SQLContext sqlContext, CodeSubmission codeSubmission) throws IOException, ClassNotFoundException, NoSuchMethodException {
         switch (codeSubmission.type()) {
             case SQL -> {
+                System.err.println("heyhyhyho");
                 var sqlCode = codeSubmission.code();
                 virtualThreads.submit(() -> sqlContext.sql(sqlCode)
                         .write()
@@ -144,7 +145,10 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     });
                 }
             }
-            default -> logger.error("Unknown code type: "+codeSubmission.type());
+            default -> {
+                System.err.println("MUMUMUMUMUMU");
+                logger.error("Unknown code type: "+codeSubmission.type());
+            }
         }
     }
 

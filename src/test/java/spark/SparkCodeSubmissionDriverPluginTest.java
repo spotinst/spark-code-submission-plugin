@@ -22,6 +22,7 @@ public class SparkCodeSubmissionDriverPluginTest {
     @BeforeAll
     public static void setup() {
         spark = SparkSession.builder().master("local").getOrCreate();
+        spark.sql("select random()").count();
         sparkCodeSubmissionDriverPlugin = new SparkCodeSubmissionDriverPlugin(58979);
         sparkCodeSubmissionDriverPlugin.init(spark.sparkContext(), null);
     }
