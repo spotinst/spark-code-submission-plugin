@@ -26,7 +26,7 @@ publishing {
         create<MavenPublication>("maven") {
             groupId = "com.netapp.spark"
             artifactId = "codesubmit"
-            version = "1.0"
+            version = "1.0.0"
 
             from(components["java"])
         }

@@ -3,7 +3,7 @@
   "component": {
     "group": "com.netapp.spark",
     "module": "codesubmit",
-    "version": "1.0",
+    "version": "1.0.0",
     "attributes": {
       "org.gradle.status": "release"
     }
@@ -25,13 +25,13 @@
       },
       "files": [
         {
-          "name": "codesubmit-1.0.jar",
-          "url": "codesubmit-1.0.jar",
+          "name": "codesubmit-1.0.0.jar",
+          "url": "codesubmit-1.0.0.jar",
           "size": 8757,
-          "sha512": "b202e0d2e214aa0ac0f4724f9de244401f43d609f473908e96b6696e93667da8aee8e6abae1eb34cc83a41c77cc04adada7c20ec8b583aca2fc6c7205d7cbf37",
-          "sha256": "b5dbefb3f86bd917a96bc330fe5cfd0f971f91dd23c33332452c09199cc4a645",
-          "sha1": "9a9b1ca1b0b4524dc19612dbdcd20fb90a08310e",
-          "md5": "3a95d8208615dab0b364b07962deaa20"
+          "sha512": "d3d66ebe2cdaa17a4d862e905f164addc6298f2ab2edbdba8d946a24da1fb854eea652e901519afd6891e31d3f93f6d5ba25c5d32cdd9b19327130cb9b22d88b",
+          "sha256": "0194502bfa2ad58f905f1d32e14b7c70f5a0d657c8bfb21fd9c735b97ae2c3fe",
+          "sha1": "2b5383418a13525c4a439a471588e394e74db455",
+          "md5": "d6d36e5ef48033235994ed22d60f41a8"
         }
       ]
     },
@@ -76,13 +76,13 @@
       ],
       "files": [
         {
-          "name": "codesubmit-1.0.jar",
-          "url": "codesubmit-1.0.jar",
+          "name": "codesubmit-1.0.0.jar",
+          "url": "codesubmit-1.0.0.jar",
           "size": 8757,
-          "sha512": "b202e0d2e214aa0ac0f4724f9de244401f43d609f473908e96b6696e93667da8aee8e6abae1eb34cc83a41c77cc04adada7c20ec8b583aca2fc6c7205d7cbf37",
-          "sha256": "b5dbefb3f86bd917a96bc330fe5cfd0f971f91dd23c33332452c09199cc4a645",
-          "sha1": "9a9b1ca1b0b4524dc19612dbdcd20fb90a08310e",
-          "md5": "3a95d8208615dab0b364b07962deaa20"
+          "sha512": "d3d66ebe2cdaa17a4d862e905f164addc6298f2ab2edbdba8d946a24da1fb854eea652e901519afd6891e31d3f93f6d5ba25c5d32cdd9b19327130cb9b22d88b",
+          "sha256": "0194502bfa2ad58f905f1d32e14b7c70f5a0d657c8bfb21fd9c735b97ae2c3fe",
+          "sha1": "2b5383418a13525c4a439a471588e394e74db455",
+          "md5": "d6d36e5ef48033235994ed22d60f41a8"
         }
       ]
     }
