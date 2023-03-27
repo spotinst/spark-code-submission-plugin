@@ -43,7 +43,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     }
 
     private void runPython(String query) throws IOException, InterruptedException {
-        var          pysparkPython = System.getenv("PYSPARK_PYTHON");
+        var pysparkPython = System.getenv("PYSPARK_PYTHON");
         var cmd = pysparkPython != null ? pysparkPython : "python3";
         ProcessBuilder      pb  = new ProcessBuilder(cmd);
         pb.redirectError(ProcessBuilder.Redirect.INHERIT);
@@ -103,7 +103,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                                 try {
                                     runPython(pythonCode);
                                 } catch (IOException | InterruptedException e) {
-                                    exchange.getResponseSender().send("Python Execution failed");
+                                    exchange.getResponseSender().send("Python Execution failed: "+e.getMessage());
                                 }
                             });
                         }
@@ -113,7 +113,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                                 try {
                                     runRscript(rCode);
                                 } catch (IOException | InterruptedException e) {
-                                    exchange.getResponseSender().send("R Execution failed");
+                                    exchange.getResponseSender().send("R Execution failed: "+e.getMessage());
                                 }
                             });
                         }
@@ -123,7 +123,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                             Files.writeString(classPath, javaCode);
                             int exitcode = compiler.run(System.in, System.out, System.err, classPath.getFileName().toString());
                             if (exitcode != 0) {
-                                exchange.getResponseSender().send("Java Compilation failed");
+                                exchange.getResponseSender().send("Java Compilation failed: "+exitcode);
                                 return;
                             } else {
                                 var submissionClass = this.getClass().getClassLoader().loadClass(codeSubmission.className());
@@ -132,12 +132,12 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                                     try {
                                         mainMethod.invoke(null, (Object) new String[]{});
                                     } catch (IllegalAccessException | InvocationTargetException e) {
-                                        exchange.getResponseSender().send("Java Execution failed");
+                                        exchange.getResponseSender().send("Java Execution failed: "+e.getMessage());
                                     }
                                 });
                             }
                         }
-                        default -> exchange.getResponseSender().send("Unknown code type");
+                        default -> exchange.getResponseSender().send("Unknown code type: "+codeSubmission.type());
                     }
                     exchange.getResponseSender().send("Success!");
                 })
@@ -151,6 +151,8 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     @Override
     public void shutdown() {
         codeSubmissionServer.stop();
+        py4jServer.shutdown();
+        rBackend.close();
         virtualThreads.shutdown();
     }
 }
