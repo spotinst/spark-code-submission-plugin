@@ -9,6 +9,7 @@ import org.apache.spark.api.python.Py4JServer;
 import org.apache.spark.api.r.RAuthHelper;
 import org.apache.spark.api.r.RBackend;
 import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.SaveMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Tuple2;
@@ -41,8 +42,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
 
     public SparkCodeSubmissionDriverPlugin(int port) {
         this.port = port;
-        //virtualThreads = Executors.newVirtualThreadPerTaskExecutor();
-        virtualThreads = Executors.newFixedThreadPool(10);
+        virtualThreads = Executors.newVirtualThreadPerTaskExecutor();
     }
 
     public int getPort() {
@@ -100,11 +100,11 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     public void submitCode(SQLContext sqlContext, CodeSubmission codeSubmission) throws IOException, ClassNotFoundException, NoSuchMethodException {
         switch (codeSubmission.type()) {
             case SQL -> {
-                System.err.println("heyhyhyho");
                 var sqlCode = codeSubmission.code();
                 virtualThreads.submit(() -> sqlContext.sql(sqlCode)
                         .write()
                         .format(codeSubmission.resultFormat())
+                        .mode(SaveMode.Overwrite)
                         .save(codeSubmission.resultsPath()));
             }
             case PYTHON -> {
@@ -146,10 +146,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     });
                 }
             }
-            default -> {
-                System.err.println("MUMUMUMUMUMU");
-                logger.error("Unknown code type: "+codeSubmission.type());
-            }
+            default -> logger.error("Unknown code type: "+codeSubmission.type());
         }
     }
 
