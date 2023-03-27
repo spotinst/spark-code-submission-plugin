@@ -17,8 +17,9 @@ dependencies {
     implementation("org.apache.spark:spark-sql_2.12:3.3.2")
     implementation("io.undertow:undertow-core:2.3.4.Final")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.14.2")
-    testImplementation(platform("org.junit:junit-bom:5.9.1"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
+
+    testImplementation(platform("org.junit:junit-bom:5.9.2"))
+    testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")
 }
 
 publishing {
@@ -48,5 +49,16 @@ publishing {
 }
 
 tasks.test {
+    jvmArgs = listOf(
+        "--enable-preview",
+        "--add-opens=java.base/java.util.regex=ALL-UNNAMED",
+        "--add-opens=java.base/java.lang=ALL-UNNAMED",
+        "--add-opens=java.base/java.time=ALL-UNNAMED",
+        "--add-opens=java.base/java.util.stream=ALL-UNNAMED",
+        "--add-opens=java.base/java.nio.charset=ALL-UNNAMED",
+        "--add-opens=java.base/java.io=ALL-UNNAMED",
+        "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+        "--add-opens=java.base/sun.security.action=ALL-UNNAMED",
+    )
     useJUnitPlatform()
 }
