@@ -23,17 +23,24 @@ dependencies {
 
 publishing {
     publications {
-        create<IvyPublication>("ivy") {
+        create<MavenPublication>("maven") {
+            groupId = "com.netapp.spark"
+            artifactId = "codesubmit"
+            version = "1.0"
+
+            from(components["java"])
+        }
+        /*create<IvyPublication>("ivy") {
             organisation = "com.netapp.spark"
             module = "codesubmit"
             revision = "1.0"
 
             from(components["java"])
-        }
+        }*/
     }
     repositories {
-        ivy {
-            url = uri(layout.buildDirectory.dir("repo"))
+        maven {
+            url = uri(layout.projectDirectory.dir("repo"))
             //val homeDir = System.getProperty("user.home")
             //url = uri("$homeDir/.ivy2/cache")
         }
