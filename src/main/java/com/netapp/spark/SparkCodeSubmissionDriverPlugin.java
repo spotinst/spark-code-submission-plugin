@@ -103,7 +103,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                                 try {
                                     runPython(pythonCode);
                                 } catch (IOException | InterruptedException e) {
-                                    e.printStackTrace();
+                                    exchange.getResponseSender().send("Python Execution failed");
                                 }
                             });
                         }
@@ -113,7 +113,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                                 try {
                                     runRscript(rCode);
                                 } catch (IOException | InterruptedException e) {
-                                    e.printStackTrace();
+                                    exchange.getResponseSender().send("R Execution failed");
                                 }
                             });
                         }
