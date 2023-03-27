@@ -1,0 +1,90 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "com.netapp.spark",
+    "module": "codesubmit",
+    "version": "1.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "8.0"
+    }
+  },
+  "variants": [
+    {
+      "name": "apiElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 20,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "codesubmit-1.0.jar",
+          "url": "codesubmit-1.0.jar",
+          "size": 8757,
+          "sha512": "73b7752db8ed7c76805a67705d5c7bc49cd2f08fc192b9af6ad136835a8876b454c91aed1714bc4e7dfe9fc0dcf0e2dae401d7d46f427b62ad7498eca50ed74e",
+          "sha256": "cc6611782b58b4e5e44aa37bb083266a69864f996cf950e6ae971496769d5959",
+          "sha1": "cd3cdd6236eeaaada08b8812b6b273a672266029",
+          "md5": "2871fa554f6b0fc8e0a6f25d80bcc3d4"
+        }
+      ]
+    },
+    {
+      "name": "runtimeElements",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.jvm.version": 20,
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.apache.spark",
+          "module": "spark-core_2.12",
+          "version": {
+            "requires": "3.3.2"
+          }
+        },
+        {
+          "group": "org.apache.spark",
+          "module": "spark-sql_2.12",
+          "version": {
+            "requires": "3.3.2"
+          }
+        },
+        {
+          "group": "io.undertow",
+          "module": "undertow-core",
+          "version": {
+            "requires": "2.3.4.Final"
+          }
+        },
+        {
+          "group": "com.fasterxml.jackson.core",
+          "module": "jackson-databind",
+          "version": {
+            "requires": "2.14.2"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "codesubmit-1.0.jar",
+          "url": "codesubmit-1.0.jar",
+          "size": 8757,
+          "sha512": "73b7752db8ed7c76805a67705d5c7bc49cd2f08fc192b9af6ad136835a8876b454c91aed1714bc4e7dfe9fc0dcf0e2dae401d7d46f427b62ad7498eca50ed74e",
+          "sha256": "cc6611782b58b4e5e44aa37bb083266a69864f996cf950e6ae971496769d5959",
+          "sha1": "cd3cdd6236eeaaada08b8812b6b273a672266029",
+          "md5": "2871fa554f6b0fc8e0a6f25d80bcc3d4"
+        }
+      ]
+    }
+  ]
+}
