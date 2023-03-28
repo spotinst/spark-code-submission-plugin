@@ -1,7 +1,7 @@
 package com.netapp.spark;
 
-public record CodeSubmission(CodeSubmissionType type, String code, String className, String config, String resultFormat, String resultsPath) {}
-/*public class CodeSubmission {
+//public record CodeSubmission(CodeSubmissionType type, String code, String className, String config, String resultFormat, String resultsPath) {}
+public class CodeSubmission {
     CodeSubmissionType type;
     String code;
     String className;
@@ -115,4 +115,4 @@ public record CodeSubmission(CodeSubmissionType type, String code, String classN
     public void resultsPath(String resultsPath) {
         this.resultsPath = resultsPath;
     }
-}*/
+}

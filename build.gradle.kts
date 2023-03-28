@@ -12,7 +12,7 @@ repositories {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(19))
+        languageVersion.set(JavaLanguageVersion.of(11))
     }
 }
 
@@ -53,6 +53,10 @@ publishing {
         }
     }
 }
+
+/*tasks.compileJava {
+    options.release.set(11)
+}*/
 
 tasks.test {
     jvmArgs = listOf(

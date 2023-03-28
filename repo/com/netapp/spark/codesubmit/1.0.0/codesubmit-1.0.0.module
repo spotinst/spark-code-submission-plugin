@@ -19,7 +19,7 @@
       "attributes": {
         "org.gradle.category": "library",
         "org.gradle.dependency.bundling": "external",
-        "org.gradle.jvm.version": 19,
+        "org.gradle.jvm.version": 11,
         "org.gradle.libraryelements": "jar",
         "org.gradle.usage": "java-api"
       },
@@ -27,11 +27,11 @@
         {
           "name": "codesubmit-1.0.0.jar",
           "url": "codesubmit-1.0.0.jar",
-          "size": 10344,
-          "sha512": "f020c0354b8bdfcc583b98179dd6e6757a41b4d6013278a66ec8cd913d0e36756d0f336135e4551bf48518158e009327a89a9140327663341d4207542c3259e7",
-          "sha256": "2f80c65850d465a7899631fe8d6f024658ae573139cd75bdb17ef954e6f8ed3f",
-          "sha1": "ed4ff93177164fdd19f25f4219916e4f024a086c",
-          "md5": "36899591f58c46f04c67faa74681f940"
+          "size": 10112,
+          "sha512": "8c3b1a7b5838a5528b3591a95a31472c06e50707cb32b3f81561629aaa93798783e2527422fcca01881f77835d3d8ca587a40651c50931782604102286341e31",
+          "sha256": "cb28bf7bdecc998e6734c5acbad016b6c92cab21c9ef03f638e7ff09715ec67d",
+          "sha1": "1350224fc6241105b508483f4cc6ae1a58b49cfb",
+          "md5": "68cfabbbb959e1c45f36aadd08e812e2"
         }
       ]
     },
@@ -40,7 +40,7 @@
       "attributes": {
         "org.gradle.category": "library",
         "org.gradle.dependency.bundling": "external",
-        "org.gradle.jvm.version": 19,
+        "org.gradle.jvm.version": 11,
         "org.gradle.libraryelements": "jar",
         "org.gradle.usage": "java-runtime"
       },
@@ -78,11 +78,11 @@
         {
           "name": "codesubmit-1.0.0.jar",
           "url": "codesubmit-1.0.0.jar",
-          "size": 10344,
-          "sha512": "f020c0354b8bdfcc583b98179dd6e6757a41b4d6013278a66ec8cd913d0e36756d0f336135e4551bf48518158e009327a89a9140327663341d4207542c3259e7",
-          "sha256": "2f80c65850d465a7899631fe8d6f024658ae573139cd75bdb17ef954e6f8ed3f",
-          "sha1": "ed4ff93177164fdd19f25f4219916e4f024a086c",
-          "md5": "36899591f58c46f04c67faa74681f940"
+          "size": 10112,
+          "sha512": "8c3b1a7b5838a5528b3591a95a31472c06e50707cb32b3f81561629aaa93798783e2527422fcca01881f77835d3d8ca587a40651c50931782604102286341e31",
+          "sha256": "cb28bf7bdecc998e6734c5acbad016b6c92cab21c9ef03f638e7ff09715ec67d",
+          "sha1": "1350224fc6241105b508483f4cc6ae1a58b49cfb",
+          "md5": "68cfabbbb959e1c45f36aadd08e812e2"
         }
       ]
     }
