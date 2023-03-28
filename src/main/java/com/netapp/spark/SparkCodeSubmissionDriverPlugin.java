@@ -204,7 +204,13 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     }
                 }))
                 .build();
-        codeSubmissionServer.start();
+        try {
+            codeSubmissionServer.start();
+        } catch (RuntimeException e) {
+            System.err.println("Using port "+ port);
+            logger.error("Failed to start code submission server at port: " + port, e);
+            throw e;
+        }
 
         return Map.of();
     }
