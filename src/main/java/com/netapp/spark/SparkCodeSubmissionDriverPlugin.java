@@ -38,7 +38,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
 
     public SparkCodeSubmissionDriverPlugin() {
-        this(8080);
+        this(8081);
     }
 
     public SparkCodeSubmissionDriverPlugin(int port) {
@@ -180,6 +180,8 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
 
     @Override
     public Map<String,String> init(SparkContext sc, PluginContext myContext) {
+        logger.info("Starting code submission server");
+        System.err.println("Starting code submission server");
         alterPysparkInitializeContext();
 
         initPy4JServer(sc);
