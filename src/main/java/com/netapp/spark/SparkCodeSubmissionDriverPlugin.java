@@ -38,7 +38,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
 
     public SparkCodeSubmissionDriverPlugin() {
-        this(8081);
+        this(9001);
     }
 
     public SparkCodeSubmissionDriverPlugin(int port) {
