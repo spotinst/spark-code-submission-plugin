@@ -28,10 +28,10 @@
           "name": "codesubmit-1.0.0.jar",
           "url": "codesubmit-1.0.0.jar",
           "size": 10313,
-          "sha512": "04b358ac2a82f2beef0d145581e206c3b5fb37a810a913bc07c8f0bbaceca946e078f6b7c351a6520cfc28917eb39329caa6b92dddcd8e4dd8f5c1861634674d",
-          "sha256": "24b5b0c8c750fde3c1357b64de11e5b359e995dcd666330ab68cdd23c0c9c372",
-          "sha1": "360106db62a9458d07b198e55611576a0697a736",
-          "md5": "6a406c7e4c2a52f64327111e693025a2"
+          "sha512": "950147e13356975beebfb2a1e13f8829597511eb254c6fe593ff5fe2c124c488f27c3cc95f2259b95f3155f695ae40cfd77b5722f32b71058b269dc9570459eb",
+          "sha256": "0dd2eeebd832e9314b784bd3b568f6d650c4e673a3092a2b378bfe25ff4cb151",
+          "sha1": "dcb17bb0b9faef1a2da3b3a1694e8264342a0fd6",
+          "md5": "e384e338f03d045827aacfbffa05caf0"
         }
       ]
     },
@@ -63,7 +63,7 @@
           "group": "io.undertow",
           "module": "undertow-core",
           "version": {
-            "requires": "2.3.4.Final"
+            "requires": "2.3.5.Final"
           }
         },
         {
@@ -79,10 +79,10 @@
           "name": "codesubmit-1.0.0.jar",
           "url": "codesubmit-1.0.0.jar",
           "size": 10313,
-          "sha512": "04b358ac2a82f2beef0d145581e206c3b5fb37a810a913bc07c8f0bbaceca946e078f6b7c351a6520cfc28917eb39329caa6b92dddcd8e4dd8f5c1861634674d",
-          "sha256": "24b5b0c8c750fde3c1357b64de11e5b359e995dcd666330ab68cdd23c0c9c372",
-          "sha1": "360106db62a9458d07b198e55611576a0697a736",
-          "md5": "6a406c7e4c2a52f64327111e693025a2"
+          "sha512": "950147e13356975beebfb2a1e13f8829597511eb254c6fe593ff5fe2c124c488f27c3cc95f2259b95f3155f695ae40cfd77b5722f32b71058b269dc9570459eb",
+          "sha256": "0dd2eeebd832e9314b784bd3b568f6d650c4e673a3092a2b378bfe25ff4cb151",
+          "sha1": "dcb17bb0b9faef1a2da3b3a1694e8264342a0fd6",
+          "md5": "e384e338f03d045827aacfbffa05caf0"
         }
       ]
     }
