@@ -150,8 +150,25 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         }
     }
 
+    private void alterPysparkInitializeContext() {
+        var sparkHome = System.getenv("SPARK_HOME");
+        var pysparkPath = Path.of(sparkHome, "python", "pyspark", "context.py");
+        if (Files.exists(pysparkPath)) {
+            try {
+                var pyspark = Files.readString(pysparkPath);
+                pyspark = pyspark.replace("return self._jvm.JavaSparkContext(jconf)", "return self._jvm.JavaSparkContext.fromSparkContext(self._jvm.org.apache.spark.SparkContext.getOrCreate(jconf))");
+                Files.writeString(pysparkPath, pyspark);
+                logger.info("Pyspark initialize context altered");
+            } catch (IOException e) {
+                logger.error("Failed to fix pyspark getOrCreate", e);
+            }
+        }
+    }
+
     @Override
     public Map<String,String> init(SparkContext sc, PluginContext myContext) {
+        alterPysparkInitializeContext();
+
         initPy4JServer(sc);
         initRBackend();
 
@@ -177,15 +194,19 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         if (py4jServer!=null) py4jServer.shutdown();
         if (rBackend!=null) rBackend.close();
         try {
-            waitForVirtualThreads();
+            if (waitForVirtualThreads()) {
+                logger.info("Virtual threads finished");
+            } else {
+                logger.debug("Virtual threads did not finish in time");
+            }
         } catch (InterruptedException e) {
             logger.debug("Interrupted while waiting for virtual threads to finish", e);
         }
         virtualThreads.shutdown();
     }
 
-    public void waitForVirtualThreads() throws InterruptedException {
-        virtualThreads.awaitTermination(10, TimeUnit.SECONDS);
+    public boolean waitForVirtualThreads() throws InterruptedException {
+        return virtualThreads.awaitTermination(10, TimeUnit.SECONDS);
     }
 
     public static void main(String[] args) {
