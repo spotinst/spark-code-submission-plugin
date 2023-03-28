@@ -1,5 +1,6 @@
 package com.netapp.spark;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.undertow.Undertow;
 import io.undertow.server.handlers.BlockingHandler;
@@ -42,7 +43,8 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
 
     public SparkCodeSubmissionDriverPlugin(int port) {
         this.port = port;
-        virtualThreads = Executors.newVirtualThreadPerTaskExecutor();
+        virtualThreads = Executors.newFixedThreadPool(10);
+        //virtualThreads = Executors.newVirtualThreadPerTaskExecutor();
     }
 
     public int getPort() {
@@ -99,15 +101,16 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
 
     public void submitCode(SQLContext sqlContext, CodeSubmission codeSubmission) throws IOException, ClassNotFoundException, NoSuchMethodException {
         switch (codeSubmission.type()) {
-            case SQL -> {
+            case SQL: // -> {
                 var sqlCode = codeSubmission.code();
                 virtualThreads.submit(() -> sqlContext.sql(sqlCode)
                         .write()
                         .format(codeSubmission.resultFormat())
                         .mode(SaveMode.Overwrite)
                         .save(codeSubmission.resultsPath()));
-            }
-            case PYTHON -> {
+                break;
+            //}
+            case PYTHON: // -> {
                 var pythonCode = codeSubmission.code();
                 virtualThreads.submit(() -> {
                     try {
@@ -116,8 +119,9 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                         logger.error("Python Execution failed", e);
                     }
                 });
-            }
-            case R -> {
+                break;
+            //}
+            case R: // -> {
                 var rCode = codeSubmission.code();
                 virtualThreads.submit(() -> {
                     try {
@@ -126,8 +130,9 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                         logger.error("R Execution failed: ", e);
                     }
                 });
-            }
-            case JAVA -> {
+                break;
+            //}
+            case JAVA: // -> {
                 var javaCode = codeSubmission.code();
                 var classPath = Path.of(codeSubmission.className()+".java");
                 Files.writeString(classPath, javaCode);
@@ -145,22 +150,30 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                         }
                     });
                 }
-            }
-            default -> logger.error("Unknown code type: "+codeSubmission.type());
+                break;
+            //}
+            default: // ->
+                logger.error("Unknown code type: "+codeSubmission.type());
+                break;
         }
     }
 
     private void alterPysparkInitializeContext() {
         var sparkHome = System.getenv("SPARK_HOME");
-        var pysparkPath = Path.of(sparkHome, "python", "pyspark", "context.py");
-        if (Files.exists(pysparkPath)) {
-            try {
-                var pyspark = Files.readString(pysparkPath);
-                pyspark = pyspark.replace("return self._jvm.JavaSparkContext(jconf)", "return self._jvm.JavaSparkContext.fromSparkContext(self._jvm.org.apache.spark.SparkContext.getOrCreate(jconf))");
-                Files.writeString(pysparkPath, pyspark);
-                logger.info("Pyspark initialize context altered");
-            } catch (IOException e) {
-                logger.error("Failed to fix pyspark getOrCreate", e);
+        if (sparkHome != null) {
+            var pysparkPath = Path.of(sparkHome, "python", "pyspark", "context.py");
+            if (Files.exists(pysparkPath)) {
+                try {
+                    var oldStatement = "return self._jvm.JavaSparkContext(jconf)";
+                    var pyspark = Files.readString(pysparkPath);
+                    if (pyspark.contains(oldStatement)) {
+                        pyspark = pyspark.replace(oldStatement, "return self._jvm.JavaSparkContext.fromSparkContext(self._jvm.org.apache.spark.SparkContext.getOrCreate(jconf))");
+                        Files.writeString(pysparkPath, pyspark);
+                        logger.info("Pyspark initialize context altered");
+                    }
+                } catch (IOException e) {
+                    logger.error("Failed to alter pyspark initialize context", e);
+                }
             }
         }
     }
@@ -178,9 +191,15 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         codeSubmissionServer = Undertow.builder()
                 .addHttpListener(port, "0.0.0.0")
                 .setHandler(new BlockingHandler(exchange -> {
-                    var codeSubmission = mapper.readValue(exchange.getInputStream(), CodeSubmission.class);
-                    submitCode(sqlContext, codeSubmission);
-                    exchange.getResponseSender().send(codeSubmission.type() + " code submitted");
+                    var codeSubmissionStr = new String(exchange.getInputStream().readAllBytes());
+                    try {
+                        var codeSubmission = mapper.readValue(codeSubmissionStr, CodeSubmission.class);
+                        submitCode(sqlContext, codeSubmission);
+                        exchange.getResponseSender().send(codeSubmission.type() + " code submitted");
+                    } catch (JsonProcessingException e) {
+                        logger.error("Failed to parse code submission", e);
+                        exchange.getResponseSender().send("Failed to parse code submission");
+                    }
                 }))
                 .build();
         codeSubmissionServer.start();

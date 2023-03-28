@@ -10,6 +10,12 @@ repositories {
     mavenCentral()
 }
 
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(19))
+    }
+}
+
 tasks.withType<JavaCompile>().configureEach { options.compilerArgs.add("--enable-preview") }
 
 dependencies {
