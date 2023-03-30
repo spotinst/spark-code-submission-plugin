@@ -43,8 +43,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
 
     public SparkCodeSubmissionDriverPlugin(int port) {
         this.port = port;
-        virtualThreads = Executors.newFixedThreadPool(10);
-        //virtualThreads = Executors.newVirtualThreadPerTaskExecutor();
+        virtualThreads = Executors.newVirtualThreadPerTaskExecutor();
     }
 
     public int getPort() {
