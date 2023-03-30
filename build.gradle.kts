@@ -60,7 +60,6 @@ publishing {
 
 tasks.test {
     jvmArgs = listOf(
-        "--enable-preview",
         "--add-opens=java.base/java.util.regex=ALL-UNNAMED",
         "--add-opens=java.base/java.lang=ALL-UNNAMED",
         "--add-opens=java.base/java.time=ALL-UNNAMED",
