@@ -44,7 +44,6 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     public SparkCodeSubmissionDriverPlugin(int port) {
         this.port = port;
         virtualThreads = Executors.newFixedThreadPool(10);
-        //virtualThreads = Executors.newVirtualThreadPerTaskExecutor();
     }
 
     public int getPort() {
@@ -101,7 +100,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
 
     public void submitCode(SQLContext sqlContext, CodeSubmission codeSubmission) throws IOException, ClassNotFoundException, NoSuchMethodException {
         switch (codeSubmission.type()) {
-            case SQL: // -> {
+            case SQL:
                 var sqlCode = codeSubmission.code();
                 virtualThreads.submit(() -> sqlContext.sql(sqlCode)
                         .write()
@@ -109,8 +108,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                         .mode(SaveMode.Overwrite)
                         .save(codeSubmission.resultsPath()));
                 break;
-            //}
-            case PYTHON: // -> {
+            case PYTHON:
                 var pythonCode = codeSubmission.code();
                 virtualThreads.submit(() -> {
                     try {
@@ -120,8 +118,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     }
                 });
                 break;
-            //}
-            case R: // -> {
+            case R:
                 var rCode = codeSubmission.code();
                 virtualThreads.submit(() -> {
                     try {
@@ -131,8 +128,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     }
                 });
                 break;
-            //}
-            case JAVA: // -> {
+            case JAVA:
                 var javaCode = codeSubmission.code();
                 var classPath = Path.of(codeSubmission.className()+".java");
                 Files.writeString(classPath, javaCode);
@@ -151,8 +147,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     });
                 }
                 break;
-            //}
-            default: // ->
+            default:
                 logger.error("Unknown code type: "+codeSubmission.type());
                 break;
         }
