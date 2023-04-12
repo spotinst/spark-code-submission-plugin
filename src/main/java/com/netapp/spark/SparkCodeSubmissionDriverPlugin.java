@@ -273,5 +273,6 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         var sparkCodeSubmissionPlugin = new SparkCodeSubmissionPlugin();
         var sparkContext = new SparkContext(args[0], args[1]);
         sparkCodeSubmissionPlugin.driverPlugin().init(sparkContext, null);
+        System.err.println("Current pid: " + ProcessHandle.current().pid());
     }
 }
