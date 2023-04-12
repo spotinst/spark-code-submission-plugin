@@ -1,9 +1,14 @@
 package com.netapp.spark;
 
+import java.util.List;
+import java.util.Map;
+
 public class CodeSubmission {
     CodeSubmissionType type;
     String code;
     String className;
+    List<String> arguments;
+    Map<String,String> environment;
     String config;
     String resultFormat;
     String resultsPath;
@@ -32,6 +37,22 @@ public class CodeSubmission {
         this.className = className;
     }
 
+    public List<String> getArguments() {
+        return arguments;
+    }
+
+    public void setArguments(List<String> arguments) {
+        this.arguments = arguments;
+    }
+
+    public Map<String,String> getEnvironment() {
+        return environment;
+    }
+
+    public void setEnvironment(Map<String,String> environment) {
+        this.environment = environment;
+    }
+
     public String getConfig() {
         return config;
     }
@@ -58,10 +79,12 @@ public class CodeSubmission {
 
     public CodeSubmission() {}
 
-    public CodeSubmission(CodeSubmissionType type, String code, String className, String config, String resultFormat, String resultsPath) {
+    public CodeSubmission(CodeSubmissionType type, String code, String className, List<String> arguments, Map<String,String> environment, String config, String resultFormat, String resultsPath) {
         this.type = type;
         this.code = code;
         this.className = className;
+        this.arguments = arguments;
+        this.environment = environment;
         this.config = config;
         this.resultFormat = resultFormat;
         this.resultsPath = resultsPath;
@@ -113,5 +136,21 @@ public class CodeSubmission {
 
     public void resultsPath(String resultsPath) {
         this.resultsPath = resultsPath;
+    }
+
+    public List<String> arguments() {
+        return arguments;
+    }
+
+    public void arguments(List<String> arguments) {
+        this.arguments = arguments;
+    }
+
+    public Map<String,String> environment() {
+        return environment;
+    }
+
+    public void environment(Map<String,String> environment) {
+        this.environment = environment;
     }
 }

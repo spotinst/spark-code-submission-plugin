@@ -13,6 +13,8 @@ import java.net.http.HttpRequest;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 
 public class SparkCodeSubmissionDriverPluginTest {
     static SparkSession spark;
@@ -39,8 +41,8 @@ public class SparkCodeSubmissionDriverPluginTest {
                 Assertions.fail("Result is not a number: "+result);
             }
         }
-        try (var resdir = Files.walk(resultsFile)) {
-            resdir.sorted(Comparator.reverseOrder()).forEach(path -> {
+        try (var resultsDir = Files.walk(resultsFile)) {
+            resultsDir.sorted(Comparator.reverseOrder()).forEach(path -> {
                 try {
                     Files.delete(path);
                 } catch (IOException e) {
@@ -50,17 +52,29 @@ public class SparkCodeSubmissionDriverPluginTest {
         }
     }
 
-    @Test
-    public void testSparkSQLSubmissionDriverPlugin() throws IOException, ClassNotFoundException, NoSuchMethodException, InterruptedException {
-        var codeSubmission = new CodeSubmission(CodeSubmissionType.SQL, "select random()", "", "", "csv", "test.csv");
+    void testSparkSubmissionDriverPlugin(CodeSubmission codeSubmission) throws IOException, ClassNotFoundException, NoSuchMethodException, InterruptedException {
         sparkCodeSubmissionDriverPlugin.submitCode(spark.sqlContext(), codeSubmission);
         sparkCodeSubmissionDriverPlugin.waitForVirtualThreads();
         checkResultsFile();
     }
 
     @Test
-    public void testSparkSQLSubmissionToServer() throws IOException, InterruptedException {
-        var codeSubmission = new CodeSubmission(CodeSubmissionType.SQL, "select random()", "", "", "csv", "test.csv");
+    public void testSparkSQLSubmissionDriverPlugin() throws IOException, ClassNotFoundException, NoSuchMethodException, InterruptedException {
+        var codeSubmission = new CodeSubmission(CodeSubmissionType.SQL, "select random()", "", List.of(), Map.of(), "", "csv", "test.csv");
+        testSparkSubmissionDriverPlugin(codeSubmission);
+    }
+
+    static String PYTHON_CODE = "from pyspark.sql import SparkSession\n" +
+            "spark = SparkSession.builder.master(\"local\").appName(\"test\").getOrCreate()" +
+            "spark.sql(\"select random()\").write.format(\"csv\").mode(\"overwrite\").save(\"test.csv\")";
+
+    @Test
+    public void testSparkPythonSubmissionDriverPlugin() throws IOException, ClassNotFoundException, NoSuchMethodException, InterruptedException {
+        var codeSubmission = new CodeSubmission(CodeSubmissionType.PYTHON, PYTHON_CODE, "", List.of(), Map.of(),"", "", "");
+        testSparkSubmissionDriverPlugin(codeSubmission);
+    }
+
+    void testSparkSubmissionToServer(CodeSubmission codeSubmission) throws IOException, InterruptedException {
         var codeSubmissionJSON = mapper.writeValueAsString(codeSubmission);
         var client = HttpClient.newHttpClient();
         var request = HttpRequest.newBuilder()
@@ -76,10 +90,22 @@ public class SparkCodeSubmissionDriverPluginTest {
     }
 
     @Test
+    public void testSparkSQLSubmissionToServer() throws IOException, InterruptedException {
+        var codeSubmission = new CodeSubmission(CodeSubmissionType.SQL, "select random()", "", List.of(), Map.of(), "", "csv", "test.csv");
+        testSparkSubmissionToServer(codeSubmission);
+    }
+
+    @Test
+    public void testSparkPythonSubmissionToServer() throws IOException, InterruptedException {
+        var codeSubmission = new CodeSubmission(CodeSubmissionType.PYTHON, PYTHON_CODE, "", List.of(), Map.of(),"", "", "");
+        testSparkSubmissionToServer(codeSubmission);
+    }
+
+    @Test
     @Disabled
     public void testSparkJavaSubmissionToServer() {
         sparkCodeSubmissionDriverPlugin.init(spark.sparkContext(), null);
-        var codeSubmission = new CodeSubmission(CodeSubmissionType.JAVA, "public class TestClass { public static String testMethod() { return \"Hello World!\"; } }", "TestClass", "", "", "");
+        var codeSubmission = new CodeSubmission(CodeSubmissionType.JAVA, "public class TestClass { public static String testMethod() { return \"Hello World!\"; } }", "TestClass", List.of(), Map.of(),"", "", "");
         sparkCodeSubmissionDriverPlugin.shutdown();
     }
 
