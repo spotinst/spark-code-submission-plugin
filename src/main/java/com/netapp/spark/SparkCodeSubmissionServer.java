@@ -37,16 +37,21 @@ public class SparkCodeSubmissionServer implements AutoCloseable {
 
     public static void main(String[] args) {
         switch (args.length) {
-            case 0 -> new SparkCodeSubmissionServer().start();
-            case 1 -> {
+            case 0:
+                new SparkCodeSubmissionServer().start();
+                break;
+            case 1:
                 if (args[0].matches("\\d+")) {
                     new SparkCodeSubmissionServer(Integer.parseInt(args[0])).start();
                 } else {
                     new SparkCodeSubmissionServer(args[0]).start();
                 }
-            }
-            case 2 -> new SparkCodeSubmissionServer(Integer.parseInt(args[0]), args[1]).start();
-            default -> new SparkCodeSubmissionServer().start();
+                break;
+            case 2:
+                new SparkCodeSubmissionServer(Integer.parseInt(args[0]), args[1]).start();
+                break;
+            default:
+                new SparkCodeSubmissionServer().start();
         }
         try {
             System.err.println("Sleeping ...");
