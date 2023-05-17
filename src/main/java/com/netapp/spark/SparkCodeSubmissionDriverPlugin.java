@@ -1,129 +1,173 @@
 package com.netapp.spark;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.undertow.Undertow;
-import io.undertow.server.handlers.BlockingHandler;
+import io.undertow.websockets.core.*;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.plugin.PluginContext;
 import org.apache.spark.api.python.Py4JServer;
 import org.apache.spark.api.r.RAuthHelper;
 import org.apache.spark.api.r.RBackend;
-import org.apache.spark.sql.SQLContext;
+import org.apache.spark.sql.Row;
+import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SaveMode;
+import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.catalyst.encoders.RowEncoder;
+import org.apache.spark.sql.connect.service.SparkConnectService;
+import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Tuple2;
+import sun.misc.Signal;
+import sun.misc.SignalHandler;
 
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.net.*;
+import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
+
+import static io.undertow.Handlers.path;
+import static io.undertow.Handlers.websocket;
 
 public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plugin.DriverPlugin {
     static Logger logger = LoggerFactory.getLogger(SparkCodeSubmissionDriverPlugin.class);
     Undertow codeSubmissionServer;
     int port;
     ExecutorService virtualThreads;
+    ExecutorService transcodeThread;
     Py4JServer py4jServer;
+    int pyport;
+    String secret;
     RBackend rBackend;
     int rbackendPort;
     String rbackendSecret;
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
 
     public SparkCodeSubmissionDriverPlugin() {
-        this(9001);
+        this(-1);
     }
 
     public SparkCodeSubmissionDriverPlugin(int port) {
         this.port = port;
         virtualThreads = Executors.newFixedThreadPool(10);
+        transcodeThread = Executors.newSingleThreadExecutor();
     }
 
     public int getPort() {
         return port;
     }
 
-    private void initPy4JServer(SparkContext sc) {
-        py4jServer = new Py4JServer(sc.conf());
-        py4jServer.start();
+    private Row initPy4JServer(SparkContext sc) throws IOException {
+        alterPysparkInitializeContext();
+
+        var path = System.getenv("_PYSPARK_DRIVER_CONN_INFO_PATH");
+        if (path != null && !path.isEmpty()) {
+            var infopath = Path.of(path);
+            if (Files.exists(infopath)) {
+                try (var walkStream = Files.walk(infopath)) {
+                    walkStream
+                            .filter(Files::isRegularFile)
+                            .filter(p -> p.getFileName().toString().endsWith(".info"))
+                            .findFirst()
+                            .ifPresent(p -> {
+                                try {
+                                    var connInfo = new DataInputStream(Files.newInputStream(p));
+                                    pyport = connInfo.readInt();
+                                    connInfo.readInt();
+                                    secret = connInfo.readUTF();
+                                } catch (IOException e) {
+                                    logger.error("Failed to delete file: " + p, e);
+                                }
+                            });
+                }
+            }
+        }
+
+        if (secret==null || secret.isEmpty()) {
+            py4jServer = new Py4JServer(sc.conf());
+            pyport = py4jServer.getListeningPort();
+            secret = py4jServer.secret();
+            py4jServer.start();
+        }
+        return RowFactory.create("py4j", pyport, secret);
     }
 
-    private void initRBackend() {
+    private Row initRBackend() {
         rBackend = new RBackend();
         Tuple2<Object, RAuthHelper> tuple = rBackend.init();
         rbackendPort = (Integer) tuple._1;
         rbackendSecret = tuple._2.secret();
 
         new Thread(() -> rBackend.run()).start();
+        return RowFactory.create("rbackend", rbackendPort, rbackendSecret);
     }
 
-    private Process runPythonProcess(ProcessBuilder pb, Map<String,String> envs) throws IOException {
+    private Process runProcess(List<String> arguments, Map<String,String> environment, String processName) throws IOException {
+        return runProcess(arguments, environment, processName, true);
+    }
+
+    private Process runProcess(List<String> arguments, Map<String,String> environment, String processName, boolean inheritOutput) throws IOException {
+        var args = new ArrayList<>(Collections.singleton(processName));
+        args.addAll(arguments);
+        var pb  = new ProcessBuilder(args);
         pb.redirectError(ProcessBuilder.Redirect.INHERIT);
-        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+        if (inheritOutput) pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
 
         //pb.redirectError(ProcessBuilder.Redirect.to(Path.of("python-err.log").toFile()));
         //pb.redirectOutput(ProcessBuilder.Redirect.to(Path.of("python-out.log").toFile()));
 
         var env = pb.environment();
-        env.putAll(envs);
+        if (environment != null) env.putAll(environment);
 
-        var port = py4jServer.getListeningPort();
-        var secret = py4jServer.secret();
-
-        env.put("PYSPARK_GATEWAY_PORT", Integer.toString(port));
-        env.put("PYSPARK_GATEWAY_SECRET", secret);
-        env.put("PYSPARK_PIN_THREAD", "true");
-
-        return pb.start();
-    }
-
-    private void runRscript(String query) throws IOException, InterruptedException {
-        var pb  = new ProcessBuilder("Rscript");
-        pb.redirectError(ProcessBuilder.Redirect.INHERIT);
-        pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-        var env = pb.environment();
-
-        env.put("EXISTING_SPARKR_BACKEND_PORT", Integer.toString(rbackendPort));
-        env.put("SPARKR_BACKEND_AUTH_SECRET", rbackendSecret);
-
-        var RProcess = pb.start();
-        RProcess.getOutputStream().write(query.getBytes());
-        int exitCode = RProcess.waitFor();
-        if (exitCode != 0) {
-            throw new RuntimeException("R process exited with code " + exitCode);
+        if (secret != null) {
+            env.put("PYSPARK_GATEWAY_PORT", Integer.toString(pyport));
+            env.put("PYSPARK_GATEWAY_SECRET", secret);
+            env.put("PYSPARK_PIN_THREAD", "true");
         }
-    }
 
-    private void runPython(String pythonCode, List<String> pythonArgs, Map<String,String> pythonEnv) throws IOException {
-        var pysparkPython = System.getenv("PYSPARK_PYTHON");
-        var cmd = pysparkPython != null ? pysparkPython : "python3";
-        var args = new ArrayList<>(Collections.singleton(cmd));
-        args.addAll(pythonArgs);
-        var pb  = new ProcessBuilder(args);
-        var pythonProcess = runPythonProcess(pb, pythonEnv);
-        if (pythonCode.length() > 0) {
-            var processOutput = pythonProcess.getOutputStream();
-            processOutput.write(pythonCode.getBytes());
-            processOutput.close();
+        if (rbackendSecret != null) {
+            env.put("EXISTING_SPARKR_BACKEND_PORT", Integer.toString(rbackendPort));
+            env.put("SPARKR_BACKEND_AUTH_SECRET", rbackendSecret);
         }
+
+        var process = pb.start();
         virtualThreads.submit(() -> {
             try {
-                int exitCode = pythonProcess.waitFor();
+                int exitCode = process.waitFor();
                 if (exitCode != 0) {
-                    logger.error("Python process exited with code " + exitCode);
+                    logger.error(processName+" process exited with code " + exitCode);
                 }
             } catch (InterruptedException e) {
-                logger.error("Python Execution failed", e);
+                logger.error(processName+" Execution failed", e);
             }
         });
+        return process;
     }
 
-    public void submitCode(SQLContext sqlContext, CodeSubmission codeSubmission) throws IOException, ClassNotFoundException, NoSuchMethodException {
+    private Process runPython(String pythonCode, List<String> pythonArgs, Map<String,String> pythonEnv) throws IOException {
+        return runPython(pythonCode, pythonArgs, pythonEnv, true);
+    }
+
+    private Process runPython(String pythonCode, List<String> pythonArgs, Map<String,String> pythonEnv, boolean inheritOutput) throws IOException {
+        var pysparkPython = System.getenv("PYSPARK_PYTHON");
+        var cmd = pysparkPython != null ? pysparkPython : "python3";
+        var file = Files.createTempFile("python", ".py");
+        Files.writeString(file, pythonCode);
+        var args = new ArrayList<>(Collections.singleton(file.toString()));
+        if (pythonArgs != null) args.addAll(pythonArgs);
+        return runProcess(args, pythonEnv, cmd, inheritOutput);
+    }
+
+    public String submitCode(SparkSession sqlContext, CodeSubmission codeSubmission) throws IOException, ClassNotFoundException, NoSuchMethodException, URISyntaxException, ExecutionException, InterruptedException {
+        var defaultResponse = codeSubmission.type() + " code submitted";
         switch (codeSubmission.type()) {
             case SQL:
                 var sqlCode = codeSubmission.code();
@@ -136,44 +180,68 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             case PYTHON:
                 runPython(codeSubmission.code(), codeSubmission.arguments(), codeSubmission.environment());
                 break;
-            case PYTHON_B64:
+            case PYTHON_BASE64:
                 var pythonCodeBase64 = codeSubmission.code();
                 var pythonCode = new String(Base64.getDecoder().decode(pythonCodeBase64));
                 runPython(pythonCode, codeSubmission.arguments(), codeSubmission.environment());
                 break;
             case R:
-                var rCode = codeSubmission.code();
                 virtualThreads.submit(() -> {
                     try {
-                        runRscript(rCode);
-                    } catch (IOException | InterruptedException e) {
+                        var processName = "Rscript";
+                        var RProcess = runProcess(codeSubmission.arguments(), codeSubmission.environment(), processName);
+                        RProcess.getOutputStream().write(codeSubmission.code().getBytes());
+                    } catch (IOException e) {
                         logger.error("R Execution failed: ", e);
                     }
                 });
                 break;
             case JAVA:
-                var javaCode = codeSubmission.code();
-                var classPath = Path.of(codeSubmission.className() + ".java");
-                Files.writeString(classPath, javaCode);
-                int exitcode = compiler.run(System.in, System.out, System.err, classPath.getFileName().toString());
-                if (exitcode != 0) {
-                    logger.error("Java Compilation failed: " + exitcode);
-                } else {
-                    var submissionClass = this.getClass().getClassLoader().loadClass(codeSubmission.className());
+                var classLoader = this.getClass().getClassLoader();
+                Class<?> submissionClass = null;
+                try {
+                    submissionClass = classLoader.loadClass(codeSubmission.className());
+                } catch (ClassNotFoundException e) {
+                    var javaCode = codeSubmission.code();
+                    var url = classLoader.getResource("test.txt");
+                    assert url != null;
+                    var classPath = Path.of(codeSubmission.className() + ".java");
+                    var path = Path.of(url.toURI()).getParent().resolve(classPath);
+                    Files.writeString(path, javaCode);
+                    int exitcode = compiler.run(System.in, System.out, System.err, path.toString());
+                    if (exitcode != 0) {
+                        defaultResponse = "Java Compilation failed: " + exitcode;
+                        logger.error(defaultResponse);
+                    } else {
+                        submissionClass = classLoader.loadClass(codeSubmission.className());
+                    }
+                }
+
+                if (submissionClass!=null) {
                     var mainMethod = submissionClass.getMethod("main", String[].class);
                     virtualThreads.submit(() -> {
                         try {
-                            mainMethod.invoke(null, (Object) new String[]{});
+                            mainMethod.invoke(null, (Object) codeSubmission.arguments().toArray(String[]::new));
                         } catch (IllegalAccessException | InvocationTargetException e) {
                             logger.error("Java Execution failed: ", e);
                         }
                     });
                 }
                 break;
+            case COMMAND:
+                var processName = codeSubmission.code();
+                /*args.add("console");
+                args.add("--kernel");
+                args.add("sparkmagic_kernels.pysparkkernel");
+                args.add("--existing");
+                args.add("kernel-" + pyport + ".json");*/
+                runProcess(codeSubmission.arguments(), codeSubmission.environment(), processName);
+                break;
             default:
                 logger.error("Unknown code type: "+codeSubmission.type());
                 break;
         }
+        return defaultResponse;
     }
 
     private void fixContext(Path pysparkPath) {
@@ -192,7 +260,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         }
     }
 
-    private void alterPysparkInitializeContext() throws IOException {
+    private void alterPysparkInitializeContext() {
         var sparkHome = System.getenv("SPARK_HOME");
         if (sparkHome != null) {
             var pysparkPath = Path.of(sparkHome, "python", "pyspark", "context.py");
@@ -201,42 +269,167 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         var pysparkPython = System.getenv("PYSPARK_PYTHON");
         var cmd = pysparkPython != null ? pysparkPython : "python3";
         var processBuilder = new ProcessBuilder(cmd, "-c", "import pyspark, os; print(os.path.dirname(pyspark.__file__))");
-        var process = processBuilder.start();
-        var path = new String(process.getInputStream().readAllBytes());
-        var pysparkPath = Path.of(path.trim(), "context.py");
-        fixContext(pysparkPath);
+        try {
+            var process = processBuilder.start();
+            var path = new String(process.getInputStream().readAllBytes());
+            var pysparkPath = Path.of(path.trim(), "context.py");
+            fixContext(pysparkPath);
+        } catch (IOException e) {
+            logger.info("Failed to alter pyspark initialize context info", e);
+        }
     }
 
-    @Override
-    public Map<String,String> init(SparkContext sc, PluginContext myContext) {
-        logger.info("Starting code submission server");
-        System.err.println("Starting code submission server");
-        try {
-            alterPysparkInitializeContext();
+    void startCodeSubmissionServer(SparkSession session) throws IOException {
+        var mapper = new ObjectMapper();
 
-            initPy4JServer(sc);
-            initRBackend();
+        codeSubmissionServer = Undertow.builder()
+            .addHttpListener(port, "0.0.0.0")
+            //.setHandler(path().addPrefixPath("/", websocket((exchange, channel) -> {
+            .setHandler(websocket((exchange, channel) -> {
+                try {
+                    var clientSocket = new Socket();
+                    clientSocket.connect(new InetSocketAddress("0.0.0.0", 15002));
+                    var cbb = new byte[1024 * 1024];
+                    var clientInput = clientSocket.getInputStream();
+                    var clientOutput = clientSocket.getOutputStream();
+                    var socketChannel = Channels.newChannel(clientOutput);
 
-            var mapper = new ObjectMapper();
-            var sqlContext = new org.apache.spark.sql.SQLContext(sc);
-
-            codeSubmissionServer = Undertow.builder()
-                    .addHttpListener(port, "0.0.0.0")
-                    .setHandler(new BlockingHandler(exchange -> {
-                        var codeSubmissionStr = new String(exchange.getInputStream().readAllBytes());
+                    transcodeThread.submit(() -> {
                         try {
-                            var codeSubmission = mapper.readValue(codeSubmissionStr, CodeSubmission.class);
-                            submitCode(sqlContext, codeSubmission);
-                            exchange.getResponseSender().send(codeSubmission.type() + " code submitted");
-                        } catch (JsonProcessingException e) {
-                            logger.error("Failed to parse code submission", e);
-                            exchange.getResponseSender().send("Failed to parse code submission");
+                            while (!clientSocket.isClosed()) {
+                                var available = Math.max(clientInput.available(), 1);
+                                var read = clientInput.read(cbb, 0, Math.min(available, cbb.length));
+                                if (read == -1) {
+                                    System.err.println("Client closed connection");
+                                    break;
+                                } else {
+                                    System.err.println("Sending " + read + " bytes");
+                                    WebSockets.sendBinaryBlocking(ByteBuffer.wrap(cbb, 0, read), channel);
+                                }
+                            }
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
                         }
-                    }))
-                    .build();
+                    });
+                    channel.getReceiveSetter().set(new AbstractReceiveListener() {
+                        @Override
+                        protected void onFullBinaryMessage(WebSocketChannel channel, BufferedBinaryMessage message) {
+                            try {
+                                var byteBuffers = message.getData().getResource();
+                                for (var bb : byteBuffers) {
+                                    socketChannel.write(bb);
+                                }
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
 
-            System.err.println("Using port "+ port);
-            codeSubmissionServer.start();
+                        @Override
+                        protected void onCloseMessage(CloseMessage cm, WebSocketChannel channel) {
+                            try {
+                                System.err.println("close server");
+                                //clientOutput.close();
+                                //clientInput.close();
+                                clientSocket.shutdownInput();
+                                clientSocket.close();
+                                super.onCloseMessage(cm, channel);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+
+                        @Override
+                        protected void onClose(WebSocketChannel webSocketChannel, StreamSourceFrameChannel channel) {
+                            try {
+                                System.err.println("erm close");
+                                super.onClose(webSocketChannel, channel);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+
+                        @Override
+                        protected void onFullCloseMessage(final WebSocketChannel channel, BufferedBinaryMessage message) {
+                            try {
+                                System.err.println("full close server");
+                                clientSocket.shutdownInput();
+                                clientSocket.close();
+                                super.onFullCloseMessage(channel, message);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+
+                        @Override
+                        protected void onFullTextMessage(WebSocketChannel channel, BufferedTextMessage message) {
+                            try {
+                                System.err.println("full close server " + message.getData());
+                                clientSocket.shutdownInput();
+                                super.onFullTextMessage(channel, message);
+                            } catch (IOException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                            /*var codeSubmissionStr = message.getData();
+                            try {
+                                var codeSubmission = mapper.readValue(codeSubmissionStr, CodeSubmission.class);
+                                var response = submitCode(session, codeSubmission);
+                                WebSockets.sendTextBlocking(response, channel);
+                            } catch (IOException | ClassNotFoundException | NoSuchMethodException | URISyntaxException |
+                                     ExecutionException | InterruptedException e) {
+                                logger.error("Failed to parse code submission", e);
+                                WebSockets.sendText("Failed to parse code submission", channel, null);
+                            }
+                        }*/
+                    });
+                    channel.resumeReceives();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }))/*).addPrefixPath("/status", exchange -> {
+                var status = new HashMap<String, Object>();
+                status.put("port", port);
+                status.put("virtualThreads", virtualThreads);
+                status.put("sparkSession", session);
+                exchange.getResponseSender().send(mapper.writeValueAsString(status));
+            }))*/
+            /*.setHandler(new BlockingHandler(exchange -> {
+                var codeSubmissionStr = new String(exchange.getInputStream().readAllBytes());
+                try {
+                    var codeSubmission = mapper.readValue(codeSubmissionStr, CodeSubmission.class);
+                    var response = submitCode(session, codeSubmission);
+                    exchange.getResponseSender().send(response);
+                } catch (JsonProcessingException e) {
+                    logger.error("Failed to parse code submission", e);
+                    exchange.getResponseSender().send("Failed to parse code submission");
+                }
+            }))*/
+            .build();
+
+        System.err.println("Using port "+ port);
+        codeSubmissionServer.start();
+    }
+
+    void init(SparkSession session) {
+        logger.info("Starting code submission server");
+        if (port == -1) {
+            port = Integer.parseInt(session.sparkContext().getConf().get("spark.code.submission.port", "9001"));
+        }
+        try {
+            SparkConnectService.start();
+
+            var connectInfo = new ArrayList<Row>();
+            if (session!=null) {
+                connectInfo.add(initPy4JServer(session.sparkContext()));
+                connectInfo.add(initRBackend());
+            }
+
+            var df = session.createDataset(connectInfo, RowEncoder.apply(StructType.fromDDL("type string, port int, secret string")));
+            df.createOrReplaceGlobalTempView("spark_connect_info");
+            var connInfoPath = System.getenv("PYSPARK_DRIVER_CONN_INFO_PATH");
+            if (connInfoPath != null && !connInfoPath.isEmpty()) df.write().mode(SaveMode.Overwrite).save(connInfoPath);
+
+            startCodeSubmissionServer(session);
         } catch (RuntimeException e) {
             logger.error("Failed to start code submission server at port: " + port, e);
             throw e;
@@ -244,8 +437,14 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             logger.error("Unable to alter pyspark context code", e);
             throw new RuntimeException(e);
         }
+    }
 
-        return Map.of();
+    @Override
+    public Map<String,String> init(SparkContext sc, PluginContext myContext) {
+        var session = new SparkSession(sc);
+        init(session);
+
+        return Collections.emptyMap();
     }
 
     @Override
@@ -263,6 +462,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             logger.debug("Interrupted while waiting for virtual threads to finish", e);
         }
         virtualThreads.shutdown();
+        transcodeThread.shutdown();
     }
 
     public boolean waitForVirtualThreads() throws InterruptedException {
@@ -273,6 +473,9 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         var sparkCodeSubmissionPlugin = new SparkCodeSubmissionPlugin();
         var sparkContext = new SparkContext(args[0], args[1]);
         sparkCodeSubmissionPlugin.driverPlugin().init(sparkContext, null);
-        System.err.println("Current pid: " + ProcessHandle.current().pid());
+        var pid = ProcessHandle.current().pid();
+        System.err.println("Started code submission server with pid: " + pid);
+        var sigchld = new Signal("CHLD");
+        Signal.handle(sigchld, SignalHandler.SIG_IGN);
     }
 }

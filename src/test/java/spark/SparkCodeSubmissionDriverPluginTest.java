@@ -8,13 +8,16 @@ import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.*;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 public class SparkCodeSubmissionDriverPluginTest {
     static SparkSession spark;
@@ -52,14 +55,14 @@ public class SparkCodeSubmissionDriverPluginTest {
         }
     }
 
-    void testSparkSubmissionDriverPlugin(CodeSubmission codeSubmission) throws IOException, ClassNotFoundException, NoSuchMethodException, InterruptedException {
-        sparkCodeSubmissionDriverPlugin.submitCode(spark.sqlContext(), codeSubmission);
+    void testSparkSubmissionDriverPlugin(CodeSubmission codeSubmission) throws IOException, ClassNotFoundException, NoSuchMethodException, InterruptedException, URISyntaxException, ExecutionException {
+        sparkCodeSubmissionDriverPlugin.submitCode(spark, codeSubmission);
         sparkCodeSubmissionDriverPlugin.waitForVirtualThreads();
         checkResultsFile();
     }
 
     @Test
-    public void testSparkSQLSubmissionDriverPlugin() throws IOException, ClassNotFoundException, NoSuchMethodException, InterruptedException {
+    public void testSparkSQLSubmissionDriverPlugin() throws IOException, ClassNotFoundException, NoSuchMethodException, InterruptedException, URISyntaxException, ExecutionException {
         var codeSubmission = new CodeSubmission(CodeSubmissionType.SQL, "select random()", "", List.of(), Map.of(), "", "csv", "test.csv");
         testSparkSubmissionDriverPlugin(codeSubmission);
     }
@@ -69,8 +72,8 @@ public class SparkCodeSubmissionDriverPluginTest {
             "spark.sql(\"select random()\").write.format(\"csv\").mode(\"overwrite\").save(\"test.csv\")";
 
     @Test
-    public void testSparkPythonSubmissionDriverPlugin() throws IOException, ClassNotFoundException, NoSuchMethodException, InterruptedException {
-        var codeSubmission = new CodeSubmission(CodeSubmissionType.PYTHON, PYTHON_CODE, "", List.of(), Map.of(),"", "", "");
+    public void testSparkPythonSubmissionDriverPlugin() throws IOException, ClassNotFoundException, NoSuchMethodException, InterruptedException, URISyntaxException, ExecutionException {
+        var codeSubmission = new CodeSubmission(CodeSubmissionType.PYTHON, PYTHON_CODE, "", List.of("test.csv"), Map.of(),"", "", "");
         testSparkSubmissionDriverPlugin(codeSubmission);
     }
 
@@ -84,9 +87,17 @@ public class SparkCodeSubmissionDriverPluginTest {
                 .build();
         var response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
         Assertions.assertEquals(200, response.statusCode());
-        Assertions.assertEquals("SQL code submitted", response.body());
+        Assertions.assertEquals(codeSubmission.type()+" code submitted", response.body());
         sparkCodeSubmissionDriverPlugin.waitForVirtualThreads();
         checkResultsFile();
+    }
+
+    @Test
+    public void testObjectMapper() throws IOException {
+        var codeSubmission = new CodeSubmission(CodeSubmissionType.SQL, "select random()", "", List.of(), Map.of(), "", "csv", "test.csv");
+        var codeSubmissionJSON = mapper.writeValueAsString(codeSubmission);
+        var codeSubmission2 = mapper.readValue(codeSubmissionJSON, CodeSubmission.class);
+        Assertions.assertEquals(codeSubmission, codeSubmission2);
     }
 
     @Test
@@ -97,7 +108,8 @@ public class SparkCodeSubmissionDriverPluginTest {
 
     @Test
     public void testSparkPythonSubmissionToServer() throws IOException, InterruptedException {
-        var codeSubmission = new CodeSubmission(CodeSubmissionType.PYTHON, PYTHON_CODE, "", List.of(), Map.of(),"", "", "");
+        var pythonBase64 = Base64.getEncoder().encodeToString(PYTHON_CODE.getBytes());
+        var codeSubmission = new CodeSubmission(CodeSubmissionType.PYTHON_BASE64, pythonBase64, "", List.of("test.csv"), Map.of(),"", "", "");
         testSparkSubmissionToServer(codeSubmission);
     }
 
