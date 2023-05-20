@@ -3,17 +3,17 @@ package com.netapp.spark;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.undertow.Undertow;
 import io.undertow.websockets.core.*;
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.plugin.PluginContext;
 import org.apache.spark.api.python.Py4JServer;
 import org.apache.spark.api.r.RAuthHelper;
 import org.apache.spark.api.r.RBackend;
-import org.apache.spark.sql.Row;
-import org.apache.spark.sql.RowFactory;
-import org.apache.spark.sql.SaveMode;
-import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.*;
 import org.apache.spark.sql.catalyst.encoders.RowEncoder;
 import org.apache.spark.sql.connect.service.SparkConnectService;
+import org.apache.spark.sql.hive.thriftserver.HiveThriftServer2;
+import org.apache.spark.sql.hive.thriftserver.ui.HiveThriftServer2EventManager;
 import org.apache.spark.sql.types.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,16 +25,15 @@ import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.*;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
 
-import static io.undertow.Handlers.path;
 import static io.undertow.Handlers.websocket;
 
 public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plugin.DriverPlugin {
@@ -42,7 +41,6 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     Undertow codeSubmissionServer;
     int port;
     ExecutorService virtualThreads;
-    ExecutorService transcodeThread;
     Py4JServer py4jServer;
     int pyport;
     String secret;
@@ -58,14 +56,13 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     public SparkCodeSubmissionDriverPlugin(int port) {
         this.port = port;
         virtualThreads = Executors.newFixedThreadPool(10);
-        transcodeThread = Executors.newSingleThreadExecutor();
     }
 
     public int getPort() {
         return port;
     }
 
-    private Row initPy4JServer(SparkContext sc) throws IOException {
+    private Row initPy4JServer(SparkContext sc) throws IOException, NoSuchFieldException, IllegalAccessException {
         alterPysparkInitializeContext();
 
         var path = System.getenv("_PYSPARK_DRIVER_CONN_INFO_PATH");
@@ -96,6 +93,14 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             pyport = py4jServer.getListeningPort();
             secret = py4jServer.secret();
             py4jServer.start();
+            
+            Map<String, String> sysenv = System.getenv();
+            Field field = sysenv.getClass().getDeclaredField("m");
+            field.setAccessible(true);
+            var env = ((Map<String, String>) field.get(sysenv));
+            env.put("PYSPARK_GATEWAY_PORT", Integer.toString(pyport));
+            env.put("PYSPARK_GATEWAY_SECRET", secret);
+            env.put("PYSPARK_PIN_THREAD", "true");
         }
         return RowFactory.create("py4j", pyport, secret);
     }
@@ -279,109 +284,26 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         }
     }
 
-    void startCodeSubmissionServer(SparkSession session) throws IOException {
-        var mapper = new ObjectMapper();
-
+    void startCodeSubmissionServer(SparkContext sc) throws IOException {
+        //var mapper = new ObjectMapper();
+        var grpcPort = sc != null ? sc.conf().get("spark.connect.grpc.binding.port", "15002") : "15002";
+        var hivePortStr = System.getenv("HIVE_SERVER2_THRIFT_PORT");
+        var hivePort = (hivePortStr == null || hivePortStr.isEmpty()) ? "10000" : hivePortStr;
+        System.err.println("Starting grpc socket on port " + grpcPort);
         codeSubmissionServer = Undertow.builder()
             .addHttpListener(port, "0.0.0.0")
             //.setHandler(path().addPrefixPath("/", websocket((exchange, channel) -> {
             .setHandler(websocket((exchange, channel) -> {
                 try {
+                    var grpcList = exchange.getRequestParameters().getOrDefault("grpc", List.of(grpcPort));
+                    var usedGrpc = Integer.parseInt(grpcList.get(0));
+
+                    var hiveList = exchange.getRequestParameters().getOrDefault("grpc", List.of(hivePort));
+                    var usedHive = Integer.parseInt(hiveList.get(0));
+                    
                     var clientSocket = new Socket();
-                    clientSocket.connect(new InetSocketAddress("0.0.0.0", 15002));
-                    var cbb = new byte[1024 * 1024];
-                    var clientInput = clientSocket.getInputStream();
-                    var clientOutput = clientSocket.getOutputStream();
-                    var socketChannel = Channels.newChannel(clientOutput);
-
-                    transcodeThread.submit(() -> {
-                        try {
-                            while (!clientSocket.isClosed()) {
-                                var available = Math.max(clientInput.available(), 1);
-                                var read = clientInput.read(cbb, 0, Math.min(available, cbb.length));
-                                if (read == -1) {
-                                    System.err.println("Client closed connection");
-                                    break;
-                                } else {
-                                    System.err.println("Sending " + read + " bytes");
-                                    WebSockets.sendBinaryBlocking(ByteBuffer.wrap(cbb, 0, read), channel);
-                                }
-                            }
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-                    channel.getReceiveSetter().set(new AbstractReceiveListener() {
-                        @Override
-                        protected void onFullBinaryMessage(WebSocketChannel channel, BufferedBinaryMessage message) {
-                            try {
-                                var byteBuffers = message.getData().getResource();
-                                for (var bb : byteBuffers) {
-                                    socketChannel.write(bb);
-                                }
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-
-                        @Override
-                        protected void onCloseMessage(CloseMessage cm, WebSocketChannel channel) {
-                            try {
-                                System.err.println("close server");
-                                //clientOutput.close();
-                                //clientInput.close();
-                                clientSocket.shutdownInput();
-                                clientSocket.close();
-                                super.onCloseMessage(cm, channel);
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-
-                        @Override
-                        protected void onClose(WebSocketChannel webSocketChannel, StreamSourceFrameChannel channel) {
-                            try {
-                                System.err.println("erm close");
-                                super.onClose(webSocketChannel, channel);
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-
-                        @Override
-                        protected void onFullCloseMessage(final WebSocketChannel channel, BufferedBinaryMessage message) {
-                            try {
-                                System.err.println("full close server");
-                                clientSocket.shutdownInput();
-                                clientSocket.close();
-                                super.onFullCloseMessage(channel, message);
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-
-                        @Override
-                        protected void onFullTextMessage(WebSocketChannel channel, BufferedTextMessage message) {
-                            try {
-                                System.err.println("full close server " + message.getData());
-                                clientSocket.shutdownInput();
-                                super.onFullTextMessage(channel, message);
-                            } catch (IOException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-                            /*var codeSubmissionStr = message.getData();
-                            try {
-                                var codeSubmission = mapper.readValue(codeSubmissionStr, CodeSubmission.class);
-                                var response = submitCode(session, codeSubmission);
-                                WebSockets.sendTextBlocking(response, channel);
-                            } catch (IOException | ClassNotFoundException | NoSuchMethodException | URISyntaxException |
-                                     ExecutionException | InterruptedException e) {
-                                logger.error("Failed to parse code submission", e);
-                                WebSockets.sendText("Failed to parse code submission", channel, null);
-                            }
-                        }*/
-                    });
+                    var sparkReceiveListener = new SparkReceiveListener(virtualThreads, channel, clientSocket, usedHive, usedGrpc);
+                    channel.getReceiveSetter().set(sparkReceiveListener);
                     channel.resumeReceives();
                 } catch (IOException e) {
                     throw new RuntimeException(e);
@@ -406,30 +328,40 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             }))*/
             .build();
 
-        System.err.println("Using port "+ port);
+        System.err.println("Using submission port "+ port);
         codeSubmissionServer.start();
     }
 
-    void init(SparkSession session) {
+    void init(SparkContext sc, SQLContext sqlContext) throws NoSuchFieldException, IllegalAccessException {
         logger.info("Starting code submission server");
         if (port == -1) {
-            port = Integer.parseInt(session.sparkContext().getConf().get("spark.code.submission.port", "9001"));
+            port = Integer.parseInt(sc.conf().get("spark.code.submission.port", "9001"));
         }
         try {
-            SparkConnectService.start();
-
-            var connectInfo = new ArrayList<Row>();
-            if (session!=null) {
-                connectInfo.add(initPy4JServer(session.sparkContext()));
-                connectInfo.add(initRBackend());
+            var useSparkConnect = sc.conf().get("spark.code.submission.connect", "true");
+            var usePySpark = sc.conf().get("spark.code.submission.pyspark", "true");
+            var useRBackend = sc.conf().get("spark.code.submission.sparkr", "true");
+            var useHive = sc.conf().get("spark.code.submission.hive", "true");
+            if (useSparkConnect.equalsIgnoreCase("true")) SparkConnectService.start();
+            if (useHive.equalsIgnoreCase("true")) {
+                var hiveThriftServer = new HiveThriftServer2(sqlContext);
+                var hiveEventManager = new HiveThriftServer2EventManager(sc);
+                HiveThriftServer2.eventManager_$eq(hiveEventManager);
+                var hiveConf = new HiveConf();
+                hiveThriftServer.init(hiveConf);
+                hiveThriftServer.start();
             }
 
-            var df = session.createDataset(connectInfo, RowEncoder.apply(StructType.fromDDL("type string, port int, secret string")));
+            var connectInfo = new ArrayList<Row>();
+            if (usePySpark.equalsIgnoreCase("true")) connectInfo.add(initPy4JServer(sc));
+            if (useRBackend.equalsIgnoreCase("true"))connectInfo.add(initRBackend());
+            
+            var df = sqlContext.createDataset(connectInfo, RowEncoder.apply(StructType.fromDDL("type string, port int, secret string")));
             df.createOrReplaceGlobalTempView("spark_connect_info");
             var connInfoPath = System.getenv("PYSPARK_DRIVER_CONN_INFO_PATH");
             if (connInfoPath != null && !connInfoPath.isEmpty()) df.write().mode(SaveMode.Overwrite).save(connInfoPath);
 
-            startCodeSubmissionServer(session);
+            startCodeSubmissionServer(sc);
         } catch (RuntimeException e) {
             logger.error("Failed to start code submission server at port: " + port, e);
             throw e;
@@ -441,8 +373,11 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
 
     @Override
     public Map<String,String> init(SparkContext sc, PluginContext myContext) {
-        var session = new SparkSession(sc);
-        init(session);
+        try {
+            init(sc, new SQLContext(sc));
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new RuntimeException(e);
+        }
 
         return Collections.emptyMap();
     }
@@ -462,7 +397,6 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             logger.debug("Interrupted while waiting for virtual threads to finish", e);
         }
         virtualThreads.shutdown();
-        transcodeThread.shutdown();
     }
 
     public boolean waitForVirtualThreads() throws InterruptedException {

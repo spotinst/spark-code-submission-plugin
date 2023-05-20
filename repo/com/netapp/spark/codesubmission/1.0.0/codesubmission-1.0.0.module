@@ -27,11 +27,11 @@
         {
           "name": "codesubmission-1.0.0.jar",
           "url": "codesubmission-1.0.0.jar",
-          "size": 26582,
-          "sha512": "fefa3242daf16732443f775bb3aa004ce7ba9d0bb24e93383c9cf4d16a92ec4b6262bb3860bef403f209517971973c0e5c17d30da67a53f575c20287caa89993",
-          "sha256": "78ee6f26436621d0f92fce10972a13b2259c5bdb6c55b898f6762c89130cf6c6",
-          "sha1": "a5421326d3c2f3b9bee2f9d3063ef469561d9298",
-          "md5": "a6bc4f9cbdd22678526f05b5737e1a07"
+          "size": 28068,
+          "sha512": "fbd9c8af85480be484ef53e72613d0d86171311079ad5227e100cd942fcbf591305dcbcd4f001cf257dee5764a76bc24b5a0408bc83b40619c174aa488df7a9a",
+          "sha256": "ea33081bfc7328bf3fb48420ca59453cade8bc5036f450f36d574a4332aa3668",
+          "sha1": "93243c9e47288a3bfe1a445576af12ad17d23542",
+          "md5": "a6c785592ef2a03f04e8d815bdd7fd56"
         }
       ]
     },
@@ -67,6 +67,20 @@
           }
         },
         {
+          "group": "org.apache.spark",
+          "module": "spark-hive_2.12",
+          "version": {
+            "requires": "3.4.0"
+          }
+        },
+        {
+          "group": "org.apache.spark",
+          "module": "spark-hive-thriftserver_2.12",
+          "version": {
+            "requires": "3.4.0"
+          }
+        },
+        {
           "group": "io.undertow",
           "module": "undertow-core",
           "version": {
@@ -85,11 +99,11 @@
         {
           "name": "codesubmission-1.0.0.jar",
           "url": "codesubmission-1.0.0.jar",
-          "size": 26582,
-          "sha512": "fefa3242daf16732443f775bb3aa004ce7ba9d0bb24e93383c9cf4d16a92ec4b6262bb3860bef403f209517971973c0e5c17d30da67a53f575c20287caa89993",
-          "sha256": "78ee6f26436621d0f92fce10972a13b2259c5bdb6c55b898f6762c89130cf6c6",
-          "sha1": "a5421326d3c2f3b9bee2f9d3063ef469561d9298",
-          "md5": "a6bc4f9cbdd22678526f05b5737e1a07"
+          "size": 28068,
+          "sha512": "fbd9c8af85480be484ef53e72613d0d86171311079ad5227e100cd942fcbf591305dcbcd4f001cf257dee5764a76bc24b5a0408bc83b40619c174aa488df7a9a",
+          "sha256": "ea33081bfc7328bf3fb48420ca59453cade8bc5036f450f36d574a4332aa3668",
+          "sha1": "93243c9e47288a3bfe1a445576af12ad17d23542",
+          "md5": "a6c785592ef2a03f04e8d815bdd7fd56"
         }
       ]
     }
