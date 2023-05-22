@@ -13,6 +13,8 @@ import java.net.http.WebSocket;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -112,6 +114,53 @@ public class SparkConnectWebsocketTranscodeDriverPlugin implements org.apache.sp
         return headers;
     }
 
+    private void fixContext(Path pysparkPath) {
+        if (Files.exists(pysparkPath)) {
+            try {
+                var oldStatement = "raise RuntimeError(\n" +
+                        "                                \"Cannot start a remote Spark session because there \"\n" +
+                        "                                \"is a regular Spark session already running.\"\n" +
+                        "                            )";
+                var pyspark = Files.readString(pysparkPath);
+                if (pyspark.contains(oldStatement)) {
+                    pyspark = pyspark.replace(oldStatement, "url = opts.get(\"spark.remote\", os.environ.get(\"SPARK_REMOTE\"))\n" +
+                            "\n" +
+                            "                            if url.startswith(\"local\"):\n" +
+                            "                                os.environ[\"SPARK_LOCAL_REMOTE\"] = \"1\"\n" +
+                            "                                RemoteSparkSession._start_connect_server(url, opts)\n" +
+                            "                                url = \"sc://localhost\"\n" +
+                            "\n" +
+                            "                            os.environ[\"SPARK_REMOTE\"] = url\n" +
+                            "                            opts[\"spark.remote\"] = url\n" +
+                            "                            return RemoteSparkSession.builder.config(map=opts).getOrCreate()");
+                    Files.writeString(pysparkPath, pyspark);
+                    logger.info("Pyspark initialize context altered");
+                }
+            } catch (IOException e) {
+                logger.error("Failed to alter pyspark initialize context", e);
+            }
+        }
+    }
+
+    private void alterPysparkRemoteSession() {
+        var sparkHome = System.getenv("SPARK_HOME");
+        if (sparkHome != null) {
+            var pysparkPath = Path.of(sparkHome, "python", "pyspark", "sql", "session.py");
+            fixContext(pysparkPath);
+        }
+        var pysparkPython = System.getenv("PYSPARK_PYTHON");
+        var cmd = pysparkPython != null ? pysparkPython : "python3";
+        var processBuilder = new ProcessBuilder(cmd, "-c", "import pyspark, os; print(os.path.dirname(pyspark.__file__))");
+        try {
+            var process = processBuilder.start();
+            var path = new String(process.getInputStream().readAllBytes());
+            var pysparkPath = Path.of(path.trim(), "sql", "session.py");
+            fixContext(pysparkPath);
+        } catch (IOException e) {
+            logger.info("Failed to alter pyspark initialize context info", e);
+        }
+    }
+
     @Override
     public Map<String,String> init(SparkContext sc, PluginContext myContext) {
         if (port == -1) {
@@ -123,6 +172,7 @@ public class SparkConnectWebsocketTranscodeDriverPlugin implements org.apache.sp
         if (headers == null) {
             headers = initHeaders(sc.getConf().get("spark.code.submission.headers", ""));
         }
+        alterPysparkRemoteSession();
         startTranscodeServer();
         return Collections.emptyMap();
     }
@@ -137,6 +187,7 @@ public class SparkConnectWebsocketTranscodeDriverPlugin implements org.apache.sp
         var url = args[1];
         var auth = args.length > 2 ? args[2] : "";
         var plugin = new SparkConnectWebsocketTranscodeDriverPlugin(port, url, auth);
+        plugin.alterPysparkRemoteSession();
         plugin.startTranscodeServer();
     }
 }
