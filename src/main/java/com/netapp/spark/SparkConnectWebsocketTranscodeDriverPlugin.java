@@ -172,7 +172,6 @@ public class SparkConnectWebsocketTranscodeDriverPlugin implements org.apache.sp
         if (headers == null) {
             headers = initHeaders(sc.getConf().get("spark.code.submission.headers", ""));
         }
-        alterPysparkRemoteSession();
         startTranscodeServer();
         return Collections.emptyMap();
     }
@@ -187,7 +186,6 @@ public class SparkConnectWebsocketTranscodeDriverPlugin implements org.apache.sp
         var url = args[1];
         var auth = args.length > 2 ? args[2] : "";
         var plugin = new SparkConnectWebsocketTranscodeDriverPlugin(port, url, auth);
-        plugin.alterPysparkRemoteSession();
         plugin.startTranscodeServer();
     }
 }
