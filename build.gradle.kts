@@ -127,7 +127,8 @@ publishing {
 }
 
 application {
-    mainClass.set("com.netapp.spark.SparkConnectWebsocketTranscodeDriverPlugin")
+    mainClass.set("com.netapp.spark.SparkCodeSubmissionServer")
+    //mainClass.set("com.netapp.spark.SparkConnectWebsocketTranscodeDriverPlugin")
     //applicationArguments = listOf("9001", "local[*]")
     applicationDefaultJvmArgs = theJvmArgs
 }
