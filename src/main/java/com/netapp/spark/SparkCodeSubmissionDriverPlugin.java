@@ -1,7 +1,9 @@
 package com.netapp.spark;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.undertow.Undertow;
+import io.undertow.server.handlers.BlockingHandler;
 import io.undertow.websockets.core.*;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.spark.SparkContext;
@@ -285,7 +287,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     }
 
     void startCodeSubmissionServer(SparkContext sc) throws IOException {
-        //var mapper = new ObjectMapper();
+        var mapper = new ObjectMapper();
         var grpcPort = sc != null ? sc.conf().get("spark.connect.grpc.binding.port", "15002") : "15002";
         var hivePortStr = System.getenv("HIVE_SERVER2_THRIFT_PORT");
         var hivePort = (hivePortStr == null || hivePortStr.isEmpty()) ? "10000" : hivePortStr;
@@ -293,7 +295,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         codeSubmissionServer = Undertow.builder()
             .addHttpListener(port, "0.0.0.0")
             //.setHandler(path().addPrefixPath("/", websocket((exchange, channel) -> {
-            .setHandler(websocket((exchange, channel) -> {
+            /*.setHandler(websocket((exchange, channel) -> {
                 try {
                     var grpcList = exchange.getRequestParameters().getOrDefault("grpc", List.of(grpcPort));
                     var usedGrpc = Integer.parseInt(grpcList.get(0));
@@ -314,17 +316,34 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 status.put("sparkSession", session);
                 exchange.getResponseSender().send(mapper.writeValueAsString(status));
             }))*/
-            /*.setHandler(new BlockingHandler(exchange -> {
+            .setHandler(new BlockingHandler(exchange -> {
                 var codeSubmissionStr = new String(exchange.getInputStream().readAllBytes());
                 try {
-                    var codeSubmission = mapper.readValue(codeSubmissionStr, CodeSubmission.class);
-                    var response = submitCode(session, codeSubmission);
-                    exchange.getResponseSender().send(response);
+                    var session = SparkSession.getActiveSession().isDefined() ? SparkSession.getActiveSession().get() : new SparkSession(sc);
+                    if (codeSubmissionStr.contains("appId")) {
+                        var jsonMap = mapper.readValue(codeSubmissionStr, Map.class);
+                        var configOverrides = jsonMap.get("configOverrides");
+                        if (configOverrides != null) {
+                            var configOverridesMap = (Map<String, Object>) configOverrides;
+                            var arguments = configOverridesMap.get("arguments");
+                            if (arguments instanceof List) {
+                                var argumentsList = (List<String>) arguments;
+                                var args = new ArrayList<String>();
+                                args.add("src/main/resources/launch_ipykernel_old.py");
+                                args.addAll(argumentsList);
+                                runProcess(args, Collections.emptyMap(), "python3");
+                            }
+                        }
+                    } else {
+                        var codeSubmission = mapper.readValue(codeSubmissionStr, CodeSubmission.class);
+                        var response = submitCode(session, codeSubmission);
+                        exchange.getResponseSender().send(response);
+                    }
                 } catch (JsonProcessingException e) {
                     logger.error("Failed to parse code submission", e);
                     exchange.getResponseSender().send("Failed to parse code submission");
                 }
-            }))*/
+            }))
             .build();
 
         System.err.println("Using submission port "+ port);

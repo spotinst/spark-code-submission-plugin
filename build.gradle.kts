@@ -48,7 +48,7 @@ jib {
         }
     }
     to {
-        image = project.findProperty("APPLICATION_REPOSITORY")?.toString() ?: "public.ecr.aws/l8m2k1n1/netapp/spark/codesubmission:1.0.0"
+        image = project.findProperty("APPLICATION_REPOSITORY")?.toString() ?: "public.ecr.aws/l8m2k1n1/netapp/spark/notebookinit:1.0.0"
         //version = "1.0.0"
         //tags = [project.findProperty("APPLICATION_TAG")?.toString() ?: "1.0"]
         if (project.hasProperty("REGISTRY_USER")) {
@@ -80,12 +80,13 @@ jib {
         //entrypoint = listOf("/opt/entrypoint.sh")
         //workingDirectory = "/opt/spark/work-dir/"
         //appRoot = "/opt/spark/"
-        mainClass = "com.netapp.spark.SparkCodeSubmissionServer"
+        //mainClass = "com.netapp.spark.SparkCodeSubmissionServer"
+        mainClass = "com.netapp.spark.NotebookInitContainer"
         //mainClass = "com.netapp.spark.SparkConnectWebsocketTranscodeDriverPlugin"
         //environment = mapOf("SPARK_REMOTE" to "sc://localhost")
         //environment = mapOf("JAVA_TOOL_OPTIONS" to "-Djdk.lang.processReaperUseDefaultStackSize=true --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED")
         jvmFlags = theJvmArgs
-        args = listOf("9001")
+        //args = listOf("9001")
     }
 }
 
