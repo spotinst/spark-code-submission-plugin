@@ -17,7 +17,6 @@ import uuid
 from multiprocessing import Process
 from random import random
 from threading import Thread
-import time
 
 from Crypto.Cipher import AES
 from future.utils import raise_from
@@ -187,7 +186,6 @@ def prepare_gateway_socket(lower_port, upper_port):
             sock.getsockname()[0], sock.getsockname()[1]
         )
     )
-    print("gateway bleh: {} {}".format(sock.getsockname()[0], sock.getsockname()[1]))
     sock.listen(1)
     sock.settimeout(5)
     return sock
@@ -254,13 +252,11 @@ def return_connection_info(connection_file, response_addr, lower_port, upper_por
     cf_json["pgid"] = str(os.getpgid(pid))
 
     # prepare socket address for handling signals
-    print(f"prepare gateway socket {lower_port} {upper_port}")
     gateway_sock = prepare_gateway_socket(lower_port, upper_port)
     cf_json["comm_port"] = gateway_sock.getsockname()[1]
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        print(f"connect to response ip and port {response_ip} {response_port}")
         s.connect((response_ip, response_port))
         json_content = json.dumps(cf_json).encode(encoding="utf-8")
         logger.debug("JSON Payload '{}".format(json_content))
@@ -367,9 +363,6 @@ def get_gateway_request(sock):
     data = ""
     request_info = None
     try:
-        print("sleeping 100 seconds")
-        time.sleep(100)
-        print("done sleeping")
         conn, addr = sock.accept()
         while True:
             buffer = conn.recv(1024).decode("utf-8")
@@ -480,7 +473,7 @@ if __name__ == "__main__":
 
     # If the connection file doesn't exist, then create it.
     if (
-        connection_file and not os.path.isfile(connection_file)
+            connection_file and not os.path.isfile(connection_file)
     ) or kernel_id is not None:
         key = str_to_bytes(str(uuid.uuid4()))
         connection_file = determine_connection_file(connection_file, kernel_id)
