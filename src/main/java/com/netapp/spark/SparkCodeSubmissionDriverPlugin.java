@@ -162,30 +162,72 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         return process;
     }
 
-    private void runPython(String pythonCode, List<String> pythonArgs, Map<String,String> pythonEnv) throws IOException {
-        runPython(pythonCode, pythonArgs, pythonEnv, true);
+    private Process runPython(String pythonCode, List<String> pythonArgs, Map<String,String> pythonEnv) throws IOException {
+        return runPython(pythonCode, pythonArgs, pythonEnv, true);
     }
 
-    private void runPython(String pythonCode, List<String> pythonArgs, Map<String,String> pythonEnv, boolean inheritOutput) throws IOException {
+    private Process runPython(String pythonCode, List<String> pythonArgs, Map<String,String> pythonEnv, boolean inheritOutput) throws IOException {
         var pysparkPython = System.getenv("PYSPARK_PYTHON");
         var cmd = pysparkPython != null ? pysparkPython : "python3";
         var file = Files.createTempFile("python", ".py");
         Files.writeString(file, pythonCode);
         var args = new ArrayList<>(Collections.singleton(file.toString()));
         if (pythonArgs != null) args.addAll(pythonArgs);
-        runProcess(args, pythonEnv, cmd, inheritOutput);
+        return runProcess(args, pythonEnv, cmd, inheritOutput);
     }
 
-    public String submitCode(SparkSession sqlContext, CodeSubmission codeSubmission) throws IOException, ClassNotFoundException, NoSuchMethodException, URISyntaxException, ExecutionException, InterruptedException {
+    public String submitCode(SparkSession sqlContext, CodeSubmission codeSubmission, ObjectMapper mapper) throws IOException, ClassNotFoundException, NoSuchMethodException, URISyntaxException, ExecutionException, InterruptedException {
         var defaultResponse = codeSubmission.type() + " code submitted";
         switch (codeSubmission.type()) {
             case SQL:
                 var sqlCode = codeSubmission.code();
-                virtualThreads.submit(() -> sqlContext.sql(sqlCode)
-                        .write()
-                        .format(codeSubmission.resultFormat())
-                        .mode(SaveMode.Overwrite)
-                        .save(codeSubmission.resultsPath()));
+                var resultsPath = codeSubmission.resultsPath();
+                if (resultsPath == null || resultsPath.isEmpty()) {
+                    if (sqlContext==null) {
+                        var code = "import sys\n" +
+                                "from pyspark.sql import SparkSession\n" +
+                                "spark = SparkSession.builder.getOrCreate()\n" +
+                                "json = spark.sql(\"%s\").toPandas().to_json()\n" +
+                                "print(json)\n";
+                        var pythonCode = String.format(code, sqlCode);
+                        System.err.println("about to run " + pythonCode);
+                        var process = runPython(pythonCode, codeSubmission.arguments(), codeSubmission.environment(), false);
+                        defaultResponse = new String(process.getInputStream().readAllBytes());
+                    } else {
+                        defaultResponse = virtualThreads.submit(() -> {
+                            var df = sqlContext.sql(sqlCode);
+                            switch (codeSubmission.resultFormat()) {
+                                case "json":
+                                case "JSON":
+                                    var json = df.toJSON().collectAsList();
+                                    return mapper.writeValueAsString(json);
+                                case "csv":
+                                case "CSV":
+                                    return String.join(",", df.collectAsList().toArray(String[]::new));
+                                default:
+                                    var rows = df.collectAsList();
+                                    return mapper.writeValueAsString(rows);
+                            }
+                        }).get();
+                    }
+                } else {
+                    if (sqlContext==null) {
+                        var code = "import sys\n" +
+                                "from pyspark.sql import SparkSession\n" +
+                                "spark = SparkSession.builder.getOrCreate()\n" +
+                                "spark.sql(\"%s\").write.format(\"%s\").mode(\"overwrite\").save(\"%s\")";
+                        runPython(
+                                String.format(code, codeSubmission.code(), codeSubmission.resultFormat(), codeSubmission.resultFormat()),
+                                codeSubmission.arguments(),
+                                codeSubmission.environment());
+                    } else {
+                        virtualThreads.submit(() -> sqlContext.sql(sqlCode)
+                                .write()
+                                .format(codeSubmission.resultFormat())
+                                .mode(SaveMode.Overwrite)
+                                .save(codeSubmission.resultsPath()));
+                    }
+                }
                 break;
             case PYTHON:
                 runPython(codeSubmission.code(), codeSubmission.arguments(), codeSubmission.environment());
@@ -310,7 +352,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                         }
                     } else {
                         var codeSubmission = mapper.readValue(codeSubmissionStr, CodeSubmission.class);
-                        var response = submitCode(session, codeSubmission);
+                        var response = submitCode(session, codeSubmission, mapper);
                         exchange.getResponseSender().send(response);
                     }
                 } catch (JsonProcessingException e) {
