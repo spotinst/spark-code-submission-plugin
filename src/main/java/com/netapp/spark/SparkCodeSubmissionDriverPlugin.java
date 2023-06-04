@@ -1,14 +1,12 @@
 package com.netapp.spark;
-;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.undertow.Undertow;
 
-import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.BlockingHandler;
 import io.undertow.util.Headers;
-import io.undertow.websockets.WebSocketConnectionCallback;
 import io.undertow.websockets.core.WebSocketChannel;
 import io.undertow.websockets.spi.WebSocketHttpExchange;
 import org.apache.hadoop.hive.conf.HiveConf;
@@ -164,18 +162,18 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         return process;
     }
 
-    private Process runPython(String pythonCode, List<String> pythonArgs, Map<String,String> pythonEnv) throws IOException {
-        return runPython(pythonCode, pythonArgs, pythonEnv, true);
+    private void runPython(String pythonCode, List<String> pythonArgs, Map<String,String> pythonEnv) throws IOException {
+        runPython(pythonCode, pythonArgs, pythonEnv, true);
     }
 
-    private Process runPython(String pythonCode, List<String> pythonArgs, Map<String,String> pythonEnv, boolean inheritOutput) throws IOException {
+    private void runPython(String pythonCode, List<String> pythonArgs, Map<String,String> pythonEnv, boolean inheritOutput) throws IOException {
         var pysparkPython = System.getenv("PYSPARK_PYTHON");
         var cmd = pysparkPython != null ? pysparkPython : "python3";
         var file = Files.createTempFile("python", ".py");
         Files.writeString(file, pythonCode);
         var args = new ArrayList<>(Collections.singleton(file.toString()));
         if (pythonArgs != null) args.addAll(pythonArgs);
-        return runProcess(args, pythonEnv, cmd, inheritOutput);
+        runProcess(args, pythonEnv, cmd, inheritOutput);
     }
 
     public String submitCode(SparkSession sqlContext, CodeSubmission codeSubmission) throws IOException, ClassNotFoundException, NoSuchMethodException, URISyntaxException, ExecutionException, InterruptedException {
