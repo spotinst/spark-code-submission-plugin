@@ -453,10 +453,11 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     }
                     entry = tar.getNextEntry();
                 }
-                Files.setPosixFilePermissions(workDir.resolve("code"), PosixFilePermissions.fromString("rwxr-xr-x"));
+                var codePath = workDir.resolve("code");
+                Files.setPosixFilePermissions(codePath, PosixFilePermissions.fromString("rwxr-xr-x"));
                 virtualThreads.submit(() -> {
                     try {
-                        var process = runProcess(List.of("tunnel", "--cli-data-dir", workDir.toString(), "--accept-server-license-terms"), Collections.emptyMap(), "code");
+                        var process = runProcess(List.of("tunnel", "--cli-data-dir", workDir.toString(), "--accept-server-license-terms"), Collections.emptyMap(), codePath.toString());
                         System.err.write(process.getInputStream().readAllBytes());
                         virtualThreads.submit(() -> {
                             try {
