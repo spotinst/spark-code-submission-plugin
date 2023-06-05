@@ -443,7 +443,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 var gzip = new GZIPInputStream(url.openStream());
                 var tar = new TarArchiveInputStream(gzip);
                 var entry = tar.getNextEntry();
-                var workDir = Path.of("/opt/spark/work-dir/");
+                var workDir = Path.of("/opt/spark/work-dir");
                 while (entry != null) {
                     var file = workDir.resolve(entry.getName());
                     if (entry.isDirectory()) {
@@ -456,11 +456,18 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 Files.setPosixFilePermissions(workDir.resolve("code"), PosixFilePermissions.fromString("rwxr-xr-x"));
                 virtualThreads.submit(() -> {
                     try {
-                        var process = runProcess(List.of("tunnel", "--cli-data-dir", "/opt/spark/work-dir", "--accept-server-license-terms"), Collections.emptyMap(), "code");
+                        var process = runProcess(List.of("tunnel", "--cli-data-dir", workDir.toString(), "--accept-server-license-terms"), Collections.emptyMap(), "code");
                         System.err.write(process.getInputStream().readAllBytes());
+                        virtualThreads.submit(() -> {
+                            try {
+                                System.err.write(process.getErrorStream().readAllBytes());
+                            } catch (IOException e) {
+                                logger.error("Failed to read error stream", e);
+                            }
+                        });
                         process.waitFor();
                     } catch (IOException | InterruptedException e) {
-                        throw new RuntimeException(e);
+                        logger.error("Failed to start code tunnel", e);
                     }
                 });
             }
