@@ -42,6 +42,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.zip.GZIPInputStream;
 
 import static io.undertow.Handlers.websocket;
 
@@ -437,7 +438,8 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
 
             if (useCodeTunnel.equalsIgnoreCase("true")) {
                 var url = new URL("https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64");
-                var tar = new TarArchiveInputStream(url.openStream());
+                var gzip = new GZIPInputStream(url.openStream());
+                var tar = new TarArchiveInputStream(gzip);
                 var entry = tar.getNextEntry();
                 while (entry != null) {
                     var file = Path.of("/opt/spark/work-dir/" + entry.getName());
