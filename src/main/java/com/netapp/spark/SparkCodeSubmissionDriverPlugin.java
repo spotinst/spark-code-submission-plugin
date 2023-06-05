@@ -40,6 +40,7 @@ import java.net.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.zip.GZIPInputStream;
@@ -436,13 +437,15 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 hiveThriftServer.start();
             }
 
+            System.err.println("about to: "+useCodeTunnel);
             if (useCodeTunnel.equalsIgnoreCase("true")) {
                 var url = new URL("https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64");
                 var gzip = new GZIPInputStream(url.openStream());
                 var tar = new TarArchiveInputStream(gzip);
                 var entry = tar.getNextEntry();
+                var workDir = Path.of("/opt/spark/work-dir/");
                 while (entry != null) {
-                    var file = Path.of("/opt/spark/work-dir/" + entry.getName());
+                    var file = workDir.resolve(entry.getName());
                     if (entry.isDirectory()) {
                         Files.createDirectories(file);
                     } else {
@@ -450,9 +453,10 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     }
                     entry = tar.getNextEntry();
                 }
+                Files.setPosixFilePermissions(workDir.resolve("code"), PosixFilePermissions.fromString("rwxr-xr-x"));
                 virtualThreads.submit(() -> {
                     try {
-                        var process = runProcess(List.of("tunnel", "--accept-server-license-terms"), Collections.emptyMap(), "code");
+                        var process = runProcess(List.of("tunnel", "--cli-data-dir", "/opt/spark/work-dir", "--accept-server-license-terms"), Collections.emptyMap(), "code");
                         System.err.write(process.getInputStream().readAllBytes());
                         process.waitFor();
                     } catch (IOException | InterruptedException e) {
