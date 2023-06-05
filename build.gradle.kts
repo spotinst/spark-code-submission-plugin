@@ -104,6 +104,7 @@ dependencies {
     implementation("org.apache.spark:spark-hive-thriftserver_2.12:3.4.0")
     implementation("io.undertow:undertow-core:2.3.5.Final")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.14.2")
+    implementation("org.apache.commons:commons-compress:1.23.0")
 
     testImplementation(platform("org.junit:junit-bom:5.9.2"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")
@@ -123,14 +124,14 @@ publishing {
         maven {
             url = uri(layout.projectDirectory.dir("repo"))
         }
-        maven {
+        /*maven {
             name = "GitHubPackages"
             url = uri("https://maven.pkg.github.com/sigmarkarl/SparkCodeSubmissionPlugin")
             credentials {
                 username = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
                 password = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
             }
-        }
+        }*/
     }
 }
 

@@ -9,6 +9,7 @@ import io.undertow.server.handlers.BlockingHandler;
 import io.undertow.util.Headers;
 import io.undertow.websockets.core.WebSocketChannel;
 import io.undertow.websockets.spi.WebSocketHttpExchange;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.plugin.PluginContext;
@@ -30,12 +31,15 @@ import sun.misc.SignalHandler;
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.*;
 
@@ -116,7 +120,13 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         rbackendPort = (Integer) tuple._1;
         rbackendSecret = tuple._2.secret();
 
-        new Thread(() -> rBackend.run()).start();
+        virtualThreads.submit(() -> {
+            try {
+                rBackend.run();
+            } catch (Exception e) {
+                logger.error("Failed to run RBackend", e);
+            }
+        });
         return RowFactory.create("rbackend", rbackendPort, rbackendSecret);
     }
 
@@ -413,6 +423,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             var useSparkConnect = sc.conf().get("spark.code.submission.connect", "true");
             var usePySpark = sc.conf().get("spark.code.submission.pyspark", "true");
             var useRBackend = sc.conf().get("spark.code.submission.sparkr", "true");
+            var useCodeTunnel = sc.conf().get("spark.code.submission.code.tunnel", "false");
             var useHive = sc.conf().get("spark.code.submission.hive", "true");
             if (useSparkConnect.equalsIgnoreCase("true")) SparkConnectService.start();
             if (useHive.equalsIgnoreCase("true")) {
@@ -422,6 +433,30 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 var hiveConf = new HiveConf();
                 hiveThriftServer.init(hiveConf);
                 hiveThriftServer.start();
+            }
+
+            if (useCodeTunnel.equalsIgnoreCase("true")) {
+                var url = new URL("https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64");
+                var tar = new TarArchiveInputStream(url.openStream());
+                var entry = tar.getNextEntry();
+                while (entry != null) {
+                    var file = Path.of("/opt/spark/work-dir/" + entry.getName());
+                    if (entry.isDirectory()) {
+                        Files.createDirectories(file);
+                    } else {
+                        Files.copy(tar, file, StandardCopyOption.REPLACE_EXISTING);
+                    }
+                    entry = tar.getNextEntry();
+                }
+                virtualThreads.submit(() -> {
+                    try {
+                        var process = runProcess(List.of("tunnel", "--accept-server-license-terms"), Collections.emptyMap(), "code");
+                        System.err.write(process.getInputStream().readAllBytes());
+                        process.waitFor();
+                    } catch (IOException | InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
             }
 
             var connectInfo = new ArrayList<Row>();

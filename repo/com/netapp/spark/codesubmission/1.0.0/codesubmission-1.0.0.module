@@ -27,11 +27,11 @@
         {
           "name": "codesubmission-1.0.0.jar",
           "url": "codesubmission-1.0.0.jar",
-          "size": 46157,
-          "sha512": "cf4adfbbac412f5f4959b46c4d86a773b4606ea883c00f59de8e0a10a9a1158ea620e0d6799181409ef3569bb02efcfe5557023b46052ac77b11bfb506aa62cf",
-          "sha256": "a7ccde117e5054c3f8252f6b723bd59ceb720d1b65125c644a0ea83b7199960f",
-          "sha1": "2288b5559222a471ed8d47a6232c19365d4b6913",
-          "md5": "47ca7a1795dbb285a997025e8a3aa8b1"
+          "size": 46943,
+          "sha512": "cf33844336f62100688306546b96199831313efa4855de1f5f940ddcbdec26e47dfb0dd3671189e366582864a1d28f3b53c5a3a1a8d7bc6b0b17f036af6261ea",
+          "sha256": "bbbc0795e9444d39865f99b998ab3085a2b11266e1cfd611e9320d6255bba457",
+          "sha1": "d4ac76ea9a9c373633228523e607f93f75cd580f",
+          "md5": "78bd0dcede8c863511c08da0abaf35ba"
         }
       ]
     },
@@ -93,17 +93,24 @@
           "version": {
             "requires": "2.14.2"
           }
+        },
+        {
+          "group": "org.apache.commons",
+          "module": "commons-compress",
+          "version": {
+            "requires": "1.23.0"
+          }
         }
       ],
       "files": [
         {
           "name": "codesubmission-1.0.0.jar",
           "url": "codesubmission-1.0.0.jar",
-          "size": 46157,
-          "sha512": "cf4adfbbac412f5f4959b46c4d86a773b4606ea883c00f59de8e0a10a9a1158ea620e0d6799181409ef3569bb02efcfe5557023b46052ac77b11bfb506aa62cf",
-          "sha256": "a7ccde117e5054c3f8252f6b723bd59ceb720d1b65125c644a0ea83b7199960f",
-          "sha1": "2288b5559222a471ed8d47a6232c19365d4b6913",
-          "md5": "47ca7a1795dbb285a997025e8a3aa8b1"
+          "size": 46943,
+          "sha512": "cf33844336f62100688306546b96199831313efa4855de1f5f940ddcbdec26e47dfb0dd3671189e366582864a1d28f3b53c5a3a1a8d7bc6b0b17f036af6261ea",
+          "sha256": "bbbc0795e9444d39865f99b998ab3085a2b11266e1cfd611e9320d6255bba457",
+          "sha1": "d4ac76ea9a9c373633228523e607f93f75cd580f",
+          "md5": "78bd0dcede8c863511c08da0abaf35ba"
         }
       ]
     }
