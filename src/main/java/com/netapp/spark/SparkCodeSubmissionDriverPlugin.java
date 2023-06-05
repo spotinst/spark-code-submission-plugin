@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.*;
+import java.net.http.HttpRequest;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -416,6 +417,36 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         codeSubmissionServer.start();
     }
 
+    void startCodeTunnel(Path workDir) throws IOException {
+        var url = new URL("https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64");
+        try (var gzip = new GZIPInputStream(url.openStream()); var tar = new TarArchiveInputStream(gzip)) {
+            var entry = tar.getNextEntry();
+            while (entry != null) {
+                var file = workDir.resolve(entry.getName());
+                if (entry.isDirectory()) {
+                    Files.createDirectories(file);
+                } else {
+                    Files.copy(tar, file, StandardCopyOption.REPLACE_EXISTING);
+                }
+                entry = tar.getNextEntry();
+            }
+        }
+        var codePath = workDir.resolve("code");
+        Files.setPosixFilePermissions(codePath, PosixFilePermissions.fromString("rwxr-xr-x"));
+        runProcess(List.of("tunnel", "--cli-data-dir", workDir.toString(), "--accept-server-license-terms"), Collections.emptyMap(), codePath.toString(), true);
+    }
+
+    void startCodeServer(Path workDir) throws IOException {
+        var url = URI.create("https://code-server.dev/install.sh");
+        var path = workDir.resolve("install.sh");
+        try (var in = url.toURL().openStream()) {
+            Files.copy(in, path, StandardCopyOption.REPLACE_EXISTING);
+            Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rwxr-xr-x"));
+            runProcess(List.of("--version", "4.13.0"), Collections.emptyMap(), path.toString(), true);
+            runProcess(List.of("--install-extension", "ms-python.python"), Collections.emptyMap(), "code-server", true);
+        }
+    }
+
     void init(SparkContext sc, SQLContext sqlContext) throws NoSuchFieldException, IllegalAccessException {
         logger.info("Starting code submission server");
         if (port == -1) {
@@ -425,7 +456,8 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             var useSparkConnect = sc.conf().get("spark.code.submission.connect", "true");
             var usePySpark = sc.conf().get("spark.code.submission.pyspark", "true");
             var useRBackend = sc.conf().get("spark.code.submission.sparkr", "true");
-            var useCodeTunnel = sc.conf().get("spark.code.submission.code.tunnel", "false");
+            var useCodeTunnel = sc.conf().get("spark.code.tunnel", "false");
+            var useCodeServer = sc.conf().get("spark.code.server", "false");
             var useHive = sc.conf().get("spark.code.submission.hive", "true");
             if (useSparkConnect.equalsIgnoreCase("true")) SparkConnectService.start();
             if (useHive.equalsIgnoreCase("true")) {
@@ -437,41 +469,9 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 hiveThriftServer.start();
             }
 
-            System.err.println("about to: "+useCodeTunnel);
-            if (useCodeTunnel.equalsIgnoreCase("true")) {
-                var url = new URL("https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64");
-                var gzip = new GZIPInputStream(url.openStream());
-                var tar = new TarArchiveInputStream(gzip);
-                var entry = tar.getNextEntry();
-                var workDir = Path.of("/opt/spark/work-dir");
-                while (entry != null) {
-                    var file = workDir.resolve(entry.getName());
-                    if (entry.isDirectory()) {
-                        Files.createDirectories(file);
-                    } else {
-                        Files.copy(tar, file, StandardCopyOption.REPLACE_EXISTING);
-                    }
-                    entry = tar.getNextEntry();
-                }
-                var codePath = workDir.resolve("code");
-                Files.setPosixFilePermissions(codePath, PosixFilePermissions.fromString("rwxr-xr-x"));
-                virtualThreads.submit(() -> {
-                    try {
-                        var process = runProcess(List.of("tunnel", "--cli-data-dir", workDir.toString(), "--accept-server-license-terms"), Collections.emptyMap(), codePath.toString());
-                        System.err.write(process.getInputStream().readAllBytes());
-                        virtualThreads.submit(() -> {
-                            try {
-                                System.err.write(process.getErrorStream().readAllBytes());
-                            } catch (IOException e) {
-                                logger.error("Failed to read error stream", e);
-                            }
-                        });
-                        process.waitFor();
-                    } catch (IOException | InterruptedException e) {
-                        logger.error("Failed to start code tunnel", e);
-                    }
-                });
-            }
+            var workDir = Path.of("/opt/spark/work-dir");
+            if (useCodeServer.equalsIgnoreCase("true")) startCodeServer(workDir);
+            if (useCodeTunnel.equalsIgnoreCase("true")) startCodeTunnel(workDir);
 
             var connectInfo = new ArrayList<Row>();
             if (usePySpark.equalsIgnoreCase("true")) connectInfo.add(initPy4JServer(sc));
