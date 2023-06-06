@@ -448,9 +448,9 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             System.err.println("installing");
             runProcess(List.of("--version", "4.13.0", "--method", "standalone", "--prefix", workDir.toString()), Map.of("XDG_CACHE_HOME", workDir.resolve(".cache").toString()), path.toString(), true).waitFor();
             System.err.println("installing extensions");
-            runProcess(List.of("--install-extension", "ms-python.python"), Collections.emptyMap(), codeserver.toString(), true).waitFor();
+            runProcess(List.of("--install-extension", "ms-python.python", "--extensions-dir", workDir.toString()), Collections.emptyMap(), codeserver.toString(), true).waitFor();
             System.err.println("starting");
-            runProcess(List.of("--auth", "none", "--bind-addr", "0.0.0.0:8080"), Collections.emptyMap(), codeserver.toString(), true);
+            runProcess(List.of("--auth", "none", "--bind-addr", "0.0.0.0:8080"), Map.of("HOME", workDir.toString()), codeserver.toString(), true);
         }
     }
 
