@@ -44,6 +44,8 @@ import java.nio.file.attribute.PosixFilePermissions;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import static io.undertow.Handlers.websocket;
 
@@ -58,6 +60,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     RBackend rBackend;
     int rbackendPort;
     String rbackendSecret;
+    Path pythonPath;
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
 
     public SparkCodeSubmissionDriverPlugin() {
@@ -74,7 +77,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     }
 
     private Row initPy4JServer(SparkContext sc) throws IOException, NoSuchFieldException, IllegalAccessException {
-        alterPysparkInitializeContext();
+        pythonPath = alterPysparkInitializeContext();
 
         var path = System.getenv("_PYSPARK_DRIVER_CONN_INFO_PATH");
         if (path != null && !path.isEmpty()) {
@@ -309,7 +312,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         return defaultResponse;
     }
 
-    private void fixContext(Path pysparkPath) {
+    private boolean fixContext(Path pysparkPath) {
         if (Files.exists(pysparkPath)) {
             try {
                 var oldStatement = "return self._jvm.JavaSparkContext(jconf)";
@@ -318,30 +321,60 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     pyspark = pyspark.replace(oldStatement, "return self._jvm.JavaSparkContext.fromSparkContext(self._jvm.org.apache.spark.SparkContext.getOrCreate(jconf))");
                     Files.writeString(pysparkPath, pyspark);
                     logger.info("Pyspark initialize context altered");
+                    return true;
                 }
             } catch (IOException e) {
                 logger.error("Failed to alter pyspark initialize context", e);
             }
         }
+        return false;
     }
 
-    private void alterPysparkInitializeContext() {
+    private Path alterPysparkInitializeContext() throws IOException {
         var sparkHome = System.getenv("SPARK_HOME");
         if (sparkHome != null) {
-            var pysparkPath = Path.of(sparkHome, "python", "pyspark", "context.py");
-            fixContext(pysparkPath);
+            var workDir = Path.of(sparkHome).resolve("python");
+            var pysparkPath = workDir.resolve("pyspark").resolve("context.py");
+            if (fixContext(pysparkPath)) return workDir;
         }
         var pysparkPython = System.getenv("PYSPARK_PYTHON");
         var cmd = pysparkPython != null ? pysparkPython : "python3";
         var processBuilder = new ProcessBuilder(cmd, "-c", "import pyspark, os; print(os.path.dirname(pyspark.__file__))");
         try {
             var process = processBuilder.start();
-            var path = new String(process.getInputStream().readAllBytes());
-            var pysparkPath = Path.of(path.trim(), "context.py");
-            fixContext(pysparkPath);
+            var pathStr = new String(process.getInputStream().readAllBytes());
+            var path = Path.of(pathStr.trim());
+            var pysparkPath = path.resolve("context.py");
+            if (fixContext(pysparkPath)) return path.getParent();
+            else return alterSecondaryPysparkInitializeContext();
         } catch (IOException e) {
-            logger.info("Failed to alter pyspark initialize context info", e);
+            return alterSecondaryPysparkInitializeContext();
         }
+    }
+
+    void unzip(Path zipFilePath, Path destDirectory) throws IOException {
+        try (ZipInputStream zipIn = new ZipInputStream(Files.newInputStream(zipFilePath))) {
+            ZipEntry entry = zipIn.getNextEntry();
+            while (entry != null) {
+                Path of = destDirectory.resolve(entry.getName());
+                if (!entry.isDirectory()) {
+                    Files.copy(zipIn, of, StandardCopyOption.REPLACE_EXISTING);
+                } else {
+                    Files.createDirectories(of);
+                }
+                zipIn.closeEntry();
+                entry = zipIn.getNextEntry();
+            }
+        }
+    }
+
+    private Path alterSecondaryPysparkInitializeContext() throws IOException {
+        var workDir = Path.of("/opt/spark/work-dir/python");
+        Files.createDirectories(workDir);
+        unzip(Path.of("/opt/spark/python/lib/pyspark.zip"), workDir);
+        var pysparkPath = workDir.resolve("pyspark").resolve("context.py");
+        fixContext(pysparkPath);
+        return workDir;
     }
 
     void handlePostRequest(HttpServerExchange exchange, SparkContext sparkContext, ObjectMapper mapper) {
@@ -456,7 +489,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             runProcess(List.of("--auth", "none", "--bind-addr", "0.0.0.0:8080", "--user-data-dir", workDir.toString(), "--extensions-dir", extensions.toString()),
                     Map.of(
                             "HOME", workDir.toString(),
-                            "PYTHONPATH", "/opt/spark/python/lib/py4j-0.10.9.7-src.zip:/opt/spark/python",
+                            "PYTHONPATH", "/opt/spark/python/lib/py4j-0.10.9.7-src.zip:"+pythonPath.toString(),
                             "SPARK_HOME", "/opt/spark"),
                     codeserver.toString(),
                     true);
