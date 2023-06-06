@@ -141,6 +141,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         var args = new ArrayList<>(Collections.singleton(processName));
         args.addAll(arguments);
         var pb  = new ProcessBuilder(args);
+        //pb.redirectErrorStream(true);
         pb.redirectError(ProcessBuilder.Redirect.INHERIT);
         if (inheritOutput) pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
 
@@ -431,7 +432,8 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 entry = tar.getNextEntry();
             }
         }
-        var codePath = workDir.resolve("code");
+        var code = Path.of("code");
+        var codePath = workDir.resolve(code);
         Files.setPosixFilePermissions(codePath, PosixFilePermissions.fromString("rwxr-xr-x"));
         runProcess(List.of("tunnel", "--cli-data-dir", workDir.toString(), "--accept-server-license-terms"), Collections.emptyMap(), codePath.toString(), true);
     }
@@ -442,8 +444,9 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         try (var in = url.toURL().openStream()) {
             Files.copy(in, path, StandardCopyOption.REPLACE_EXISTING);
             Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rwxr-xr-x"));
-            runProcess(List.of("--version", "4.13.0"), Collections.emptyMap(), path.toString(), true);
-            runProcess(List.of("--install-extension", "ms-python.python"), Collections.emptyMap(), "code-server", true);
+            runProcess(List.of("--version", "4.13.0", "--prefix", workDir.toString()), Collections.emptyMap(), path.toString(), true);
+            runProcess(List.of("--install-extension", "ms-python.python"), Collections.emptyMap(), workDir.resolve("code-server").toString(), true);
+            runProcess(List.of("--auth", "none", "--bind-addr", "0.0.0.0:8080"), Collections.emptyMap(), workDir.resolve("code-server").toString(), true);
         }
     }
 
