@@ -37,7 +37,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.*;
-import java.net.http.HttpRequest;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -457,7 +456,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             runProcess(List.of("--auth", "none", "--bind-addr", "0.0.0.0:8080", "--user-data-dir", workDir.toString(), "--extensions-dir", extensions.toString()),
                     Map.of(
                             "HOME", workDir.toString(),
-                            "PYTHONPATH", "/opt/spark/python/lib/py4j-0.10.9.7-src.zip:/opt/spark/python/lib/pyspark.zip",
+                            "PYTHONPATH", "/opt/spark/python/lib/py4j-0.10.9.7-src.zip:/opt/spark/python",
                             "SPARK_HOME", "/opt/spark"),
                     codeserver.toString(),
                     true);
