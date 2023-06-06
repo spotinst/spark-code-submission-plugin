@@ -438,20 +438,23 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         runProcess(List.of("tunnel", "--cli-data-dir", workDir.toString(), "--accept-server-license-terms"), Collections.emptyMap(), codePath.toString(), true);
     }
 
-    void startCodeServer(Path workDir) throws IOException {
+    void startCodeServer(Path workDir) throws IOException, InterruptedException {
         var url = URI.create("https://code-server.dev/install.sh");
         var path = workDir.resolve("install.sh");
         var codeserver = workDir.resolve("bin").resolve("code-server");
         try (var in = url.toURL().openStream()) {
             Files.copy(in, path, StandardCopyOption.REPLACE_EXISTING);
             Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rwxr-xr-x"));
-            runProcess(List.of("--version", "4.13.0", "--prefix", workDir.toString()), Collections.emptyMap(), path.toString(), true);
-            runProcess(List.of("--install-extension", "ms-python.python"), Collections.emptyMap(), codeserver.toString(), true);
+            System.err.println("installing");
+            runProcess(List.of("--version", "4.13.0", "--prefix", workDir.toString()), Collections.emptyMap(), path.toString(), true).waitFor();
+            System.err.println("installing extensions");
+            runProcess(List.of("--install-extension", "ms-python.python"), Collections.emptyMap(), codeserver.toString(), true).waitFor();
+            System.err.println("starting");
             runProcess(List.of("--auth", "none", "--bind-addr", "0.0.0.0:8080"), Collections.emptyMap(), codeserver.toString(), true);
         }
     }
 
-    void init(SparkContext sc, SQLContext sqlContext) throws NoSuchFieldException, IllegalAccessException {
+    void init(SparkContext sc, SQLContext sqlContext) throws NoSuchFieldException, IllegalAccessException, InterruptedException {
         logger.info("Starting code submission server");
         if (port == -1) {
             port = Integer.parseInt(sc.conf().get("spark.code.submission.port", "9001"));
@@ -500,7 +503,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     public Map<String,String> init(SparkContext sc, PluginContext myContext) {
         try {
             init(sc, new SQLContext(sc));
-        } catch (NoSuchFieldException | IllegalAccessException e) {
+        } catch (NoSuchFieldException | IllegalAccessException | InterruptedException e) {
             throw new RuntimeException(e);
         }
 

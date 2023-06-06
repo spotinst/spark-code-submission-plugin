@@ -32,7 +32,7 @@ public class SparkCodeSubmissionServer implements AutoCloseable {
         this.port = port;
     }
 
-    public void start() throws NoSuchFieldException, IllegalAccessException {
+    public void start() throws NoSuchFieldException, IllegalAccessException, InterruptedException {
         var server = new SparkCodeSubmissionDriverPlugin(port);
         server.init(spark.sparkContext(), spark.sqlContext());
     }
