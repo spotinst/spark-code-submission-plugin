@@ -448,9 +448,18 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             System.err.println("installing");
             runProcess(List.of("--version", "4.13.0", "--method", "standalone", "--prefix", workDir.toString()), Map.of("XDG_CACHE_HOME", workDir.resolve(".cache").toString()), path.toString(), true).waitFor();
             System.err.println("installing extensions");
-            runProcess(List.of("--install-extension", "ms-python.python", "--extensions-dir", workDir.toString()), Collections.emptyMap(), codeserver.toString(), true).waitFor();
+            runProcess(List.of("--install-extension", "ms-python.python", "--extensions-dir", workDir.toString(), "--auth", "none"), Map.of("HOME", workDir.toString()), codeserver.toString(), true).waitFor();
+            runProcess(List.of("--install-extension", "ms-toolsai.jupyter", "--extensions-dir", workDir.toString(), "--auth", "none"), Map.of("HOME", workDir.toString()), codeserver.toString(), true).waitFor();
+            runProcess(List.of("--install-extension", "ms-toolsai.jupyter-keymap", "--extensions-dir", workDir.toString(), "--auth", "none"), Map.of("HOME", workDir.toString()), codeserver.toString(), true).waitFor();
+            runProcess(List.of("--install-extension", "ms-toolsai.jupyter-renderers", "--extensions-dir", workDir.toString(), "--auth", "none"), Map.of("HOME", workDir.toString()), codeserver.toString(), true).waitFor();
             System.err.println("starting");
-            runProcess(List.of("--auth", "none", "--bind-addr", "0.0.0.0:8080"), Map.of("HOME", workDir.toString()), codeserver.toString(), true);
+            runProcess(List.of("--auth", "none", "--bind-addr", "0.0.0.0:8080", "--user-data-dir", workDir.toString()),
+                    Map.of(
+                            "HOME", workDir.toString(),
+                            "PYTHONPATH", "/opt/spark/python/lib/py4j-0.10.9.7-src.zip:/opt/spark/python/lib/pyspark.zip",
+                            "SPARK_HOME", "/opt/spark"),
+                    codeserver.toString(),
+                    true);
         }
     }
 
@@ -482,7 +491,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
 
             var connectInfo = new ArrayList<Row>();
             if (usePySpark.equalsIgnoreCase("true")) connectInfo.add(initPy4JServer(sc));
-            if (useRBackend.equalsIgnoreCase("true"))connectInfo.add(initRBackend());
+            if (useRBackend.equalsIgnoreCase("true")) connectInfo.add(initRBackend());
 
             var df = sqlContext.createDataset(connectInfo, RowEncoder.apply(StructType.fromDDL("type string, port int, secret string")));
             df.createOrReplaceGlobalTempView("spark_connect_info");
