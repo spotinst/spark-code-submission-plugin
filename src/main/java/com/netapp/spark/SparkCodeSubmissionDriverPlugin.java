@@ -441,12 +441,13 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     void startCodeServer(Path workDir) throws IOException {
         var url = URI.create("https://code-server.dev/install.sh");
         var path = workDir.resolve("install.sh");
+        var codeserver = workDir.resolve("bin").resolve("code-server");
         try (var in = url.toURL().openStream()) {
             Files.copy(in, path, StandardCopyOption.REPLACE_EXISTING);
             Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rwxr-xr-x"));
             runProcess(List.of("--version", "4.13.0", "--prefix", workDir.toString()), Collections.emptyMap(), path.toString(), true);
-            runProcess(List.of("--install-extension", "ms-python.python"), Collections.emptyMap(), workDir.resolve("code-server").toString(), true);
-            runProcess(List.of("--auth", "none", "--bind-addr", "0.0.0.0:8080"), Collections.emptyMap(), workDir.resolve("code-server").toString(), true);
+            runProcess(List.of("--install-extension", "ms-python.python"), Collections.emptyMap(), codeserver.toString(), true);
+            runProcess(List.of("--auth", "none", "--bind-addr", "0.0.0.0:8080"), Collections.emptyMap(), codeserver.toString(), true);
         }
     }
 
