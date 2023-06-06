@@ -470,7 +470,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         runProcess(List.of("tunnel", "--cli-data-dir", workDir.toString(), "--accept-server-license-terms"), Collections.emptyMap(), codePath.toString(), true);
     }
 
-    void startCodeServer(Path workDir) throws IOException, InterruptedException {
+    void startCodeServer(Path workDir, int port) throws IOException, InterruptedException {
         var url = URI.create("https://code-server.dev/install.sh");
         var path = workDir.resolve("install.sh");
         var codeserver = workDir.resolve("bin").resolve("code-server");
@@ -486,7 +486,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             runProcess(List.of("--install-extension", "ms-toolsai.jupyter-keymap", "--extensions-dir", extensions.toString(), "--auth", "none"), Map.of("HOME", workDir.toString()), codeserver.toString(), true).waitFor();
             runProcess(List.of("--install-extension", "ms-toolsai.jupyter-renderers", "--extensions-dir", extensions.toString(), "--auth", "none"), Map.of("HOME", workDir.toString()), codeserver.toString(), true).waitFor();
             System.err.println("starting");
-            runProcess(List.of("--auth", "none", "--bind-addr", "0.0.0.0:8080", "--user-data-dir", workDir.toString(), "--extensions-dir", extensions.toString()),
+            runProcess(List.of("--auth", "none", "--bind-addr", "0.0.0.0:"+port, "--user-data-dir", workDir.toString(), "--extensions-dir", extensions.toString()),
                     Map.of(
                             "HOME", workDir.toString(),
                             "PYTHONPATH", "/opt/spark/python/lib/py4j-0.10.9.7-src.zip:"+pythonPath.toString(),
@@ -506,7 +506,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             var usePySpark = sc.conf().get("spark.code.submission.pyspark", "true");
             var useRBackend = sc.conf().get("spark.code.submission.sparkr", "true");
             var useCodeTunnel = sc.conf().get("spark.code.tunnel", "false");
-            var useCodeServer = sc.conf().get("spark.code.server", "false");
+            var useCodeServer = sc.conf().get("spark.code.server", "");
             var useHive = sc.conf().get("spark.code.submission.hive", "true");
             if (useSparkConnect.equalsIgnoreCase("true")) SparkConnectService.start();
             if (useHive.equalsIgnoreCase("true")) {
@@ -523,7 +523,15 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             if (useRBackend.equalsIgnoreCase("true")) connectInfo.add(initRBackend());
 
             var workDir = Path.of("/opt/spark/work-dir");
-            if (useCodeServer.equalsIgnoreCase("true")) startCodeServer(workDir);
+            if (useCodeServer.length()>0) {
+                int codeServerPort = 8080;
+                try {
+                    codeServerPort = Integer.parseInt(useCodeServer);
+                } catch (NumberFormatException e) {
+                    logger.info("No default code server port: " + useCodeServer, e);
+                }
+                startCodeServer(workDir, codeServerPort);
+            }
             if (useCodeTunnel.equalsIgnoreCase("true")) startCodeTunnel(workDir);
 
             var df = sqlContext.createDataset(connectInfo, RowEncoder.apply(StructType.fromDDL("type string, port int, secret string")));
