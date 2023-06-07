@@ -136,13 +136,14 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     }
 
     Process runProcess(List<String> arguments, Map<String,String> environment, String processName) throws IOException {
-        return runProcess(arguments, environment, processName, true);
+        return runProcess(arguments, environment, processName, true, null);
     }
 
-    private Process runProcess(List<String> arguments, Map<String,String> environment, String processName, boolean inheritOutput) throws IOException {
+    private Process runProcess(List<String> arguments, Map<String,String> environment, String processName, boolean inheritOutput, Path dir) throws IOException {
         var args = new ArrayList<>(Collections.singleton(processName));
         args.addAll(arguments);
         var pb  = new ProcessBuilder(args);
+        if (dir!=null) pb.directory(dir.toFile());
         //pb.redirectErrorStream(true);
         pb.redirectError(ProcessBuilder.Redirect.INHERIT);
         if (inheritOutput) pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
@@ -189,7 +190,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         Files.writeString(file, pythonCode);
         var args = new ArrayList<>(Collections.singleton(file.toString()));
         if (pythonArgs != null) args.addAll(pythonArgs);
-        return runProcess(args, pythonEnv, cmd, inheritOutput);
+        return runProcess(args, pythonEnv, cmd, inheritOutput, null);
     }
 
     public String submitCode(SparkSession sqlContext, CodeSubmission codeSubmission, ObjectMapper mapper) throws IOException, ClassNotFoundException, NoSuchMethodException, URISyntaxException, ExecutionException, InterruptedException {
@@ -467,7 +468,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         var code = Path.of("code");
         var codePath = workDir.resolve(code);
         Files.setPosixFilePermissions(codePath, PosixFilePermissions.fromString("rwxr-xr-x"));
-        runProcess(List.of("tunnel", "--cli-data-dir", workDir.toString(), "--accept-server-license-terms"), Collections.emptyMap(), codePath.toString(), true);
+        runProcess(List.of("tunnel", "--cli-data-dir", workDir.toString(), "--accept-server-license-terms"), Collections.emptyMap(), codePath.toString(), true, workDir);
     }
 
     void startCodeServer(Path workDir, int port) throws IOException, InterruptedException {
@@ -479,12 +480,12 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             Files.copy(in, path, StandardCopyOption.REPLACE_EXISTING);
             Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rwxr-xr-x"));
             System.err.println("installing");
-            runProcess(List.of("--version", "4.13.0", "--method", "standalone", "--prefix", workDir.toString()), Map.of("XDG_CACHE_HOME", workDir.resolve(".cache").toString()), path.toString(), true).waitFor();
+            runProcess(List.of("--version", "4.13.0", "--method", "standalone", "--prefix", workDir.toString()), Map.of("XDG_CACHE_HOME", workDir.resolve(".cache").toString()), path.toString(), true, null).waitFor();
             System.err.println("installing extensions");
-            runProcess(List.of("--install-extension", "ms-python.python", "--extensions-dir", extensions.toString(), "--auth", "none"), Map.of("HOME", workDir.toString()), codeserver.toString(), true).waitFor();
-            runProcess(List.of("--install-extension", "ms-toolsai.jupyter", "--extensions-dir", extensions.toString(), "--auth", "none"), Map.of("HOME", workDir.toString()), codeserver.toString(), true).waitFor();
-            runProcess(List.of("--install-extension", "ms-toolsai.jupyter-keymap", "--extensions-dir", extensions.toString(), "--auth", "none"), Map.of("HOME", workDir.toString()), codeserver.toString(), true).waitFor();
-            runProcess(List.of("--install-extension", "ms-toolsai.jupyter-renderers", "--extensions-dir", extensions.toString(), "--auth", "none"), Map.of("HOME", workDir.toString()), codeserver.toString(), true).waitFor();
+            runProcess(List.of("--install-extension", "ms-python.python", "--extensions-dir", extensions.toString(), "--auth", "none"), Map.of("HOME", workDir.toString()), codeserver.toString(), true, null).waitFor();
+            runProcess(List.of("--install-extension", "ms-toolsai.jupyter", "--extensions-dir", extensions.toString(), "--auth", "none"), Map.of("HOME", workDir.toString()), codeserver.toString(), true, null).waitFor();
+            runProcess(List.of("--install-extension", "ms-toolsai.jupyter-keymap", "--extensions-dir", extensions.toString(), "--auth", "none"), Map.of("HOME", workDir.toString()), codeserver.toString(), true, null).waitFor();
+            runProcess(List.of("--install-extension", "ms-toolsai.jupyter-renderers", "--extensions-dir", extensions.toString(), "--auth", "none"), Map.of("HOME", workDir.toString()), codeserver.toString(), true, null).waitFor();
             System.err.println("starting");
             runProcess(List.of("--auth", "none", "--bind-addr", "0.0.0.0:"+port, "--user-data-dir", workDir.toString(), "--extensions-dir", extensions.toString()),
                     Map.of(
@@ -492,7 +493,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                             "PYTHONPATH", "/opt/spark/python/lib/py4j-0.10.9.7-src.zip:"+pythonPath.toString(),
                             "SPARK_HOME", "/opt/spark"),
                     codeserver.toString(),
-                    true);
+                    true, null);
         }
     }
 

@@ -2,8 +2,8 @@ plugins {
     id("java-library")
     id("application")
     id("maven-publish")
-    id("org.graalvm.buildtools.native") version "0.9.21"
-    id("com.google.cloud.tools.jib") version "3.3.1"
+    id("org.graalvm.buildtools.native") version "0.9.22"
+    id("com.google.cloud.tools.jib") version "3.3.2"
 }
 
 group = "com.netapp.spark"
@@ -28,7 +28,8 @@ repositories {
 
 jib {
     from {
-        image = "public.ecr.aws/l8m2k1n1/netapp/spark/codesubmission:baseimage-1.0.0"
+        image = "openjdk:21-jdk"
+        //image = "public.ecr.aws/l8m2k1n1/netapp/spark/codesubmission:baseimage-1.0.0"
         //version = "baseimage-1.0.0"
         platforms {
             platform {
@@ -60,6 +61,14 @@ jib {
             }
         }
     }
+    /*pluginExtensions {
+        pluginExtension {
+            implementation = "com.google.cloud.tools.jib.gradle.extension.nativeimage.JibNativeImageExtension"
+            properties = mapOf(
+                "imageName" to "com.netapp.spark.NotebookInitContainer",
+            )
+        }
+    }*/
 //    pluginExtensions {
 //        pluginExtension {
 //            implementation = "com.google.cloud.tools.jib.gradle.extension.ownership.JibOwnershipExtension"
@@ -172,9 +181,10 @@ tasks.test {
 graalvmNative {
     binaries {
         named("main") {
-            mainClass.set("com.netapp.spark.SparkCodeSubmissionServer")
+            //mainClass.set("com.netapp.spark.SparkCodeSubmissionServer")
+            mainClass.set("com.netapp.spark.NotebookInitContainer")
             jvmArgs.addAll(theJvmArgs)
-            runtimeArgs.addAll(listOf("9001"))
+            //runtimeArgs.addAll(listOf("9001"))
             useFatJar.set(true)
             //zip64.set(true)
         }

@@ -10,15 +10,12 @@ public class NotebookInitContainer {
              var isold = NotebookInitContainer.class.getResourceAsStream("/launch_ipykernel_old.py");
              var iseg322 = NotebookInitContainer.class.getResourceAsStream("/launch_ipykernel_eg322.py")) {
             if (is != null && isold != null && iseg322 != null) {
-                var bytes = is.readAllBytes();
-                var bytes_old = isold.readAllBytes();
-                var bytes_eg322 = iseg322.readAllBytes();
                 var path = Path.of("/opt/spark/work-dir/launch_ipykernel.py");
                 var path_old = Path.of("/opt/spark/work-dir/launch_ipykernel_old.py");
                 var path_eg322 = Path.of("/opt/spark/work-dir/launch_ipykernel_eg322.py");
-                Files.write(path, bytes);
-                Files.write(path_old, bytes_old);
-                Files.write(path_eg322, bytes_eg322);
+                Files.copy(is, path);
+                Files.copy(isold, path_old);
+                Files.copy(iseg322, path_eg322);
                 System.err.println("launch_ipykernel.py written to " + path);
             } else {
                 System.err.println("launch_ipykernel.py not found");
