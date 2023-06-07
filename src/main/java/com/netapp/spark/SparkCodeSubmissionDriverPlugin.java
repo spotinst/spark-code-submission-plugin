@@ -468,7 +468,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         var code = Path.of("code");
         var codePath = workDir.resolve(code);
         Files.setPosixFilePermissions(codePath, PosixFilePermissions.fromString("rwxr-xr-x"));
-        runProcess(List.of("tunnel", "--cli-data-dir", workDir.toString(), "--accept-server-license-terms"), Collections.emptyMap(), codePath.toString(), true, Path.of("/tmp"));
+        runProcess(List.of("tunnel", "--cli-data-dir", workDir.toString(), "--accept-server-license-terms"), Collections.emptyMap(), codePath.toString(), true, null);
     }
 
     void startCodeServer(Path workDir, int port) throws IOException, InterruptedException {
