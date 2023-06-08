@@ -419,15 +419,22 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         }
     }
 
-    void handleWebsocketRequest(WebSocketHttpExchange exchange, WebSocketChannel channel, String grpcPort, String hivePort) {
-        var grpcList = exchange.getRequestParameters().getOrDefault("grpc", List.of(grpcPort));
-        var usedGrpc = Integer.parseInt(grpcList.get(0));
-
-        var hiveList = exchange.getRequestParameters().getOrDefault("grpc", List.of(hivePort));
-        var usedHive = Integer.parseInt(hiveList.get(0));
+    void handleWebsocketRequest(WebSocketHttpExchange exchange, WebSocketChannel channel, int grpcPort, int hivePort) {
+        if (exchange.getRequestParameters().containsKey("grpc")) {
+            var grpcList = exchange.getRequestParameters().get("grpc");
+            if (grpcList.size() > 0) {
+                grpcPort = Integer.parseInt(grpcList.get(0));
+            }
+        }
+        if (exchange.getRequestParameters().containsKey("hive")) {
+            var hiveList = exchange.getRequestParameters().get("hive");
+            if (hiveList.size() > 0) {
+                hivePort = Integer.parseInt(hiveList.get(0));
+            }
+        }
 
         try {
-            var sparkReceiveListener = new SparkReceiveListener(virtualThreads, channel, usedHive, usedGrpc);
+            var sparkReceiveListener = new SparkReceiveListener(virtualThreads, channel, grpcPort, hivePort);
             channel.getReceiveSetter().set(sparkReceiveListener);
             channel.resumeReceives();
         } catch (IOException e) {
@@ -435,12 +442,8 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         }
     }
 
-    void startCodeSubmissionServer(SparkContext sc) throws IOException {
+    void startCodeSubmissionServer(SparkContext sc, int grpcPort, int hivePort) throws IOException {
         var mapper = new ObjectMapper();
-        var grpcPort = sc != null ? sc.conf().get("spark.connect.grpc.binding.port", "15002") : "15002";
-        var hivePortStr = System.getenv("HIVE_SERVER2_THRIFT_PORT");
-        var hivePort = (hivePortStr == null || hivePortStr.isEmpty()) ? "10000" : hivePortStr;
-
         var webSocketPostHandler = websocket((exchange, channel) -> handleWebsocketRequest(exchange, channel, grpcPort, hivePort), new BlockingHandler(exchange -> handlePostRequest(exchange, sc, mapper)));
         codeSubmissionServer = Undertow.builder()
             .addHttpListener(port, "0.0.0.0")
@@ -505,6 +508,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         try {
             var useSparkConnect = sc.conf().get("spark.code.submission.connect", "true");
             var usePySpark = sc.conf().get("spark.code.submission.pyspark", "true");
+            var forwardPySpark = sc.conf().get("spark.code.forward.pyspark", "false");
             var useRBackend = sc.conf().get("spark.code.submission.sparkr", "true");
             var useCodeTunnel = sc.conf().get("spark.code.tunnel", "false");
             var useCodeServer = sc.conf().get("spark.code.server", "");
@@ -522,6 +526,8 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             var connectInfo = new ArrayList<Row>();
             if (usePySpark.equalsIgnoreCase("true")) connectInfo.add(initPy4JServer(sc));
             if (useRBackend.equalsIgnoreCase("true")) connectInfo.add(initRBackend());
+            connectInfo.forEach(row -> logger.info("Connect info: " + row));
+            connectInfo.forEach(row -> System.err.println("Connect info: " + row));
 
             var workDir = Path.of("/opt/spark/work-dir");
             if (useCodeServer.length()>0) {
@@ -540,7 +546,26 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             var connInfoPath = System.getenv("PYSPARK_DRIVER_CONN_INFO_PATH");
             if (connInfoPath != null && !connInfoPath.isEmpty()) df.write().mode(SaveMode.Overwrite).save(connInfoPath);
 
-            startCodeSubmissionServer(sc);
+            if (forwardPySpark.equalsIgnoreCase("true")) {
+                int pyPort = connectInfo.stream().filter(r -> r.getString(0).equals("py4j")).map(r -> r.getInt(1)).findFirst().orElseThrow();
+                startCodeSubmissionServer(sc, pyPort, pyPort);
+                /*var pythonPath = Path.of("/opt/spark/python");
+                var pythonPathEnv = System.getenv("PYTHONPATH");
+                if (pythonPathEnv != null && !pythonPathEnv.isEmpty()) {
+                    pythonPath = pythonPath.resolve(pythonPathEnv);
+                }
+                var pythonPathStr = pythonPath.toString();
+                logger.info("Forwarding PYTHONPATH: " + pythonPathStr);
+                sc.conf().set("spark.executorEnv.PYTHONPATH", pythonPathStr);
+                sc.conf().set("spark.yarn.appMasterEnv.PYTHONPATH", pythonPathStr);
+                sc.conf().set("spark.driverEnv.PYTHONPATH", pythonPathStr);*/
+            } else {
+                var grpcPort = Integer.parseInt(sc.conf().get("spark.connect.grpc.binding.port", "15002"));
+                var hivePortStr = System.getenv("HIVE_SERVER2_THRIFT_PORT");
+                var hivePort = Integer.parseInt((hivePortStr == null || hivePortStr.isEmpty()) ? "10000" : hivePortStr);
+
+                startCodeSubmissionServer(sc, grpcPort, hivePort);
+            }
         } catch (RuntimeException e) {
             logger.error("Failed to start code submission server at port: " + port, e);
             throw e;
