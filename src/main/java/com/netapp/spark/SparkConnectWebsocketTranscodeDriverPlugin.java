@@ -131,7 +131,7 @@ public class SparkConnectWebsocketTranscodeDriverPlugin implements org.apache.sp
                         transcodeThreads.submit(() -> servePort(langport));
                     }
                 }
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 logger.error("Error getting spark connect info", e);
             }
         }

@@ -34,7 +34,7 @@ public class SparkCodeSubmissionServer implements AutoCloseable {
 
     public void start() throws NoSuchFieldException, IllegalAccessException, InterruptedException {
         var server = new SparkCodeSubmissionDriverPlugin(port);
-        server.init(spark.sparkContext(), spark.sqlContext());
+        server.init(spark.sparkContext(), spark);
     }
 
     public static void main(String[] args) {
