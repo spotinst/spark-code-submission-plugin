@@ -503,7 +503,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             runProcess(List.of("--auth", "none", "--bind-addr", "0.0.0.0:"+port, "--user-data-dir", workDir.toString(), "--extensions-dir", extensions.toString()),
                     Map.of(
                             "HOME", workDir.toString(),
-                            "PYTHONPATH", "/opt/spark/python/lib/py4j-0.10.9.7-src.zip:"+pythonPath.toString(),
+                            "PYTHONPATH", "/opt/spark/python/lib/py4j-0.10.9.7-src.zip" + (pythonPath!=null?":"+pythonPath:""),
                             "SPARK_HOME", "/opt/spark"),
                     codeserver.toString(),
                     true, null);
@@ -556,12 +556,12 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     portMap.put(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
                 }
             }
-            var useSparkConnect = sc.conf().get("spark.code.submission.connect", "false");
-            var usePySpark = sc.conf().get("spark.code.submission.pyspark", "false");
-            var useRBackend = sc.conf().get("spark.code.submission.sparkr", "false");
+            var useSparkConnect = sc.conf().get("spark.code.submission.connect", "true");
+            var usePySpark = sc.conf().get("spark.code.submission.pyspark", "true");
+            var useRBackend = sc.conf().get("spark.code.submission.sparkr", "true");
             var useCodeTunnel = sc.conf().get("spark.code.tunnel", "false");
             var useCodeServer = sc.conf().get("spark.code.server", "");
-            var useHive = sc.conf().get("spark.code.submission.hive", "false");
+            var useHive = sc.conf().get("spark.code.submission.hive", "true");
             if (useSparkConnect.equalsIgnoreCase("true")) SparkConnectService.start();
 
             var connectInfo = new ArrayList<Row>();
