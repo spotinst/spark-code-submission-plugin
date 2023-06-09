@@ -113,7 +113,7 @@ public class SparkConnectWebsocketTranscodeDriverPlugin implements org.apache.sp
             transcodeThreads.submit(() -> servePort(port));
             fetchPorts = fetchPorts | port == 10000;
         }
-        /*if (fetchPorts) {
+        if (fetchPorts) {
             try (var connection = DriverManager.getConnection("jdbc:hive2://localhost:10000"); var statement = connection.createStatement();) {
                 var resultSet = statement.executeQuery("SELECT * FROM global_temp.spark_connect_info");
                 while (resultSet.next()) {
@@ -125,17 +125,6 @@ public class SparkConnectWebsocketTranscodeDriverPlugin implements org.apache.sp
                         System.err.println("export PYSPARK_GATEWAY_PORT=" + langport);
                         System.err.println("export PYSPARK_GATEWAY_SECRET=" + secret);
                         transcodeThreads.submit(() -> servePort(langport));
-                            /*transcodeThreads.submit(() -> {
-                                try (var datagramSocket = new java.net.DatagramSocket(langport)) {
-                                    datagramSocket.setReuseAddress(true);
-                                    var dpacket = new java.net.DatagramPacket(new byte[1024], 1024);
-                                    datagramSocket.receive(dpacket);
-                                    String received = new String(dpacket.getData(), 0, dpacket.getLength());
-                                    System.out.println("Quote of the Moment: " + received);
-                                } catch (IOException e) {
-                                    throw new RuntimeException(e);
-                                }
-                            });*
                     } else if(type.equals("rbackend")) {
                         System.err.println("export EXISTING_SPARKR_BACKEND_PORT=" + langport);
                         System.err.println("export SPARKR_BACKEND_AUTH_SECRET=" + secret);
@@ -145,7 +134,7 @@ public class SparkConnectWebsocketTranscodeDriverPlugin implements org.apache.sp
             } catch (SQLException e) {
                 logger.error("Error getting spark connect info", e);
             }
-        }*/
+        }
     }
 
     Map<String,String> initHeaders(String header) {
