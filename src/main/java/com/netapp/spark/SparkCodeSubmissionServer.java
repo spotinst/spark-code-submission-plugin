@@ -9,7 +9,7 @@ public class SparkCodeSubmissionServer implements AutoCloseable {
     int port = -1;
 
     public SparkCodeSubmissionServer() {
-        spark = SparkSession.builder().getOrCreate();
+        spark = SparkSession.builder().enableHiveSupport().getOrCreate();
     }
 
     public SparkCodeSubmissionServer(int port) {
@@ -23,7 +23,7 @@ public class SparkCodeSubmissionServer implements AutoCloseable {
                 spark = SparkSession.builder().master(master).appName("SparkCodeSubmissionServer").enableHiveSupport().getOrCreate();
             }
         } else {
-            spark = SparkSession.builder().getOrCreate();
+            spark = SparkSession.builder().enableHiveSupport().getOrCreate();
         }
     }
 

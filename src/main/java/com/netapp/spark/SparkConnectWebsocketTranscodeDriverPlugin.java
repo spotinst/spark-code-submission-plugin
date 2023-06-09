@@ -108,21 +108,23 @@ public class SparkConnectWebsocketTranscodeDriverPlugin implements org.apache.sp
 
     void startTranscodeServers() {
         logger.info("Starting code submission server");
+        boolean fetchPorts = false;
         for (int port : ports) {
             transcodeThreads.submit(() -> servePort(port));
-
-            if (port == 10000) {
-                try (var connection = DriverManager.getConnection("jdbc:hive2://localhost:10000"); var statement = connection.createStatement();) {
-                    var resultSet = statement.executeQuery("SELECT * FROM global_temp.spark_connect_info");
-                    while (resultSet.next()) {
-                        var type = resultSet.getString(1);
-                        var langport = resultSet.getInt(2)+10;
-                        var secret = resultSet.getString(3);
-                        if (type.equals("py4j")) {
-                            System.err.println("export PYSPARK_PIN_THREAD=true");
-                            System.err.println("export PYSPARK_GATEWAY_PORT=" + langport);
-                            System.err.println("export PYSPARK_GATEWAY_SECRET=" + secret);
-                            transcodeThreads.submit(() -> servePort(langport));
+            fetchPorts = fetchPorts | port == 10000;
+        }
+        /*if (fetchPorts) {
+            try (var connection = DriverManager.getConnection("jdbc:hive2://localhost:10000"); var statement = connection.createStatement();) {
+                var resultSet = statement.executeQuery("SELECT * FROM global_temp.spark_connect_info");
+                while (resultSet.next()) {
+                    var type = resultSet.getString(1);
+                    var langport = resultSet.getInt(2)+10;
+                    var secret = resultSet.getString(3);
+                    if (type.equals("py4j")) {
+                        System.err.println("export PYSPARK_PIN_THREAD=true");
+                        System.err.println("export PYSPARK_GATEWAY_PORT=" + langport);
+                        System.err.println("export PYSPARK_GATEWAY_SECRET=" + secret);
+                        transcodeThreads.submit(() -> servePort(langport));
                             /*transcodeThreads.submit(() -> {
                                 try (var datagramSocket = new java.net.DatagramSocket(langport)) {
                                     datagramSocket.setReuseAddress(true);
@@ -133,18 +135,17 @@ public class SparkConnectWebsocketTranscodeDriverPlugin implements org.apache.sp
                                 } catch (IOException e) {
                                     throw new RuntimeException(e);
                                 }
-                            });*/
-                        } else if(type.equals("rbackend")) {
-                            System.err.println("export EXISTING_SPARKR_BACKEND_PORT=" + langport);
-                            System.err.println("export SPARKR_BACKEND_AUTH_SECRET=" + secret);
-                            transcodeThreads.submit(() -> servePort(langport));
-                        }
+                            });*
+                    } else if(type.equals("rbackend")) {
+                        System.err.println("export EXISTING_SPARKR_BACKEND_PORT=" + langport);
+                        System.err.println("export SPARKR_BACKEND_AUTH_SECRET=" + secret);
+                        transcodeThreads.submit(() -> servePort(langport));
                     }
-                } catch (SQLException e) {
-                    logger.error("Error getting spark connect info", e);
                 }
+            } catch (SQLException e) {
+                logger.error("Error getting spark connect info", e);
             }
-        }
+        }*/
     }
 
     Map<String,String> initHeaders(String header) {
