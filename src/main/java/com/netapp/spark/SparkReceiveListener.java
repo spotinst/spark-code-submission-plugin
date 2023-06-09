@@ -8,30 +8,34 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 public class SparkReceiveListener extends AbstractReceiveListener {
     Socket clientSocket;
     WritableByteChannel socketChannel;
     boolean first = true;
-    int hivePort;
-    int grpcPort;
     ExecutorService virtualThreads;
     WebSocketChannel channel;
+    Map<Integer,Integer>    portMap;
 
-    SparkReceiveListener(ExecutorService virtualThreads, WebSocketChannel channel, int hivePort, int grpcPort) throws IOException {
+    SparkReceiveListener(ExecutorService virtualThreads, WebSocketChannel channel, Map<Integer,Integer> portMap) throws IOException {
         this.clientSocket = new Socket();
-        this.grpcPort = grpcPort;
-        this.hivePort = hivePort;
         this.virtualThreads = virtualThreads;
         this.channel = channel;
+        this.portMap = portMap;
     }
 
-    void init(ByteBuffer bb) throws IOException {
+    void init(int port) throws IOException {
         first = false;
-        int port = bb.get(0) == 1 ? hivePort : grpcPort;
+        //int port = bb.get(0) == 1 ? hivePort : grpcPort;
         //System.err.println(bb.get(0) + " " + bb.get(1) + " " + bb.get(2) + " " + bb.get(3) + " " + bb.get(4) + " " + bb.get(5) + " " + bb.get(6));
-        clientSocket.connect(new InetSocketAddress("0.0.0.0", port));
+        int nport = portMap.getOrDefault(port, port);
+        if (port == nport+10) {
+            clientSocket.connect(new InetSocketAddress("localhost", nport));
+        } else {
+            clientSocket.connect(new InetSocketAddress("0.0.0.0", nport));
+        }
         var clientInput = clientSocket.getInputStream();
         var clientOutput = clientSocket.getOutputStream();
         this.socketChannel = Channels.newChannel(clientOutput);
@@ -62,9 +66,11 @@ public class SparkReceiveListener extends AbstractReceiveListener {
             var byteBuffers = message.getData().getResource();
             for (var bb : byteBuffers) {
                 if (first) {
-                    init(bb);
+                    init(bb.getInt());
+                    socketChannel.write(bb.slice());
+                } else {
+                    socketChannel.write(bb);
                 }
-                socketChannel.write(bb);
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
