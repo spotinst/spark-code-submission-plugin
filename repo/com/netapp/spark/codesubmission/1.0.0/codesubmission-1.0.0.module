@@ -27,11 +27,11 @@
         {
           "name": "codesubmission-1.0.0.jar",
           "url": "codesubmission-1.0.0.jar",
-          "size": 52010,
-          "sha512": "360d5c073b22324332aee437423b3d8b6691701211cc67d17c4fef20d595925233b8733ed071cf49455f512a3603f932aaccee2aa5313004c64de5c9b8ec8e38",
-          "sha256": "f9c95ed3eb62466814d591d6985a1e60c1f28d6e052965ded3feba2f678801cd",
-          "sha1": "d35e23c469ec56d1186e2591050ed99311506257",
-          "md5": "e5cfb0719ebbebcd879c90552f35d196"
+          "size": 53302,
+          "sha512": "6074691b9b24d48141096c5a4b9825e08ebf511c418df6526082ff50d01a26603ca3290ea5bea6b96e719fc9b544b44d39c9c025e1be32104f0f2430263757f0",
+          "sha256": "dd609e33ade01137e4ebe3d88f76a9bfd70fc1dc6dfb031435d7430446a06c47",
+          "sha1": "2b30d70c5b127ba9e97e39af9d78b9c9c1aa538d",
+          "md5": "5b20a99b141512ddc9cf6fcb01768a18"
         }
       ]
     },
@@ -100,17 +100,24 @@
           "version": {
             "requires": "1.23.0"
           }
+        },
+        {
+          "group": "io.kubernetes",
+          "module": "client-java",
+          "version": {
+            "requires": "18.0.0"
+          }
         }
       ],
       "files": [
         {
           "name": "codesubmission-1.0.0.jar",
           "url": "codesubmission-1.0.0.jar",
-          "size": 52010,
-          "sha512": "360d5c073b22324332aee437423b3d8b6691701211cc67d17c4fef20d595925233b8733ed071cf49455f512a3603f932aaccee2aa5313004c64de5c9b8ec8e38",
-          "sha256": "f9c95ed3eb62466814d591d6985a1e60c1f28d6e052965ded3feba2f678801cd",
-          "sha1": "d35e23c469ec56d1186e2591050ed99311506257",
-          "md5": "e5cfb0719ebbebcd879c90552f35d196"
+          "size": 53302,
+          "sha512": "6074691b9b24d48141096c5a4b9825e08ebf511c418df6526082ff50d01a26603ca3290ea5bea6b96e719fc9b544b44d39c9c025e1be32104f0f2430263757f0",
+          "sha256": "dd609e33ade01137e4ebe3d88f76a9bfd70fc1dc6dfb031435d7430446a06c47",
+          "sha1": "2b30d70c5b127ba9e97e39af9d78b9c9c1aa538d",
+          "md5": "5b20a99b141512ddc9cf6fcb01768a18"
         }
       ]
     }

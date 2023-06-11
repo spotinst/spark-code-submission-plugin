@@ -4,6 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.undertow.Undertow;
 
+import io.kubernetes.client.openapi.ApiException;
+import io.kubernetes.client.openapi.apis.CoreV1Api;
+import io.kubernetes.client.util.Config;
+
 import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.BlockingHandler;
 import io.undertow.util.Headers;
@@ -510,6 +514,46 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         }
     }
 
+    private static Optional<String> getJupyterBaseUrl() {
+        var baseurl = System.getenv("JUPYTER_BASE_URL");
+        if (baseurl == null) {
+            baseurl = System.getProperty("JUPYTER_BASE_URL");
+        }
+        if (baseurl != null && !baseurl.isEmpty()) {
+            return Optional.of(baseurl);
+        }
+        return Optional.empty();
+    }
+
+    void startCodeJupyter(Path workDir, int port, String appName) throws IOException, ApiException {
+        runProcess(List.of(
+                "install",
+                "--target",
+                workDir.toString(),
+                "jupyterlab"), Map.of(), "pip");
+
+        var client = Config.defaultClient();
+        //client.setBasePath("https://your-kubernetes-cluster-url");
+        var api = new CoreV1Api(client);
+
+        var pod = api.readNamespacedPod(appName+"-driver", "spark-apps", null);
+        var labels = Objects.requireNonNull(pod.getMetadata())
+                .getLabels();
+        assert labels != null;
+        var clusterId = labels.get("bigdata.spot.io/cluster-id");
+
+        var jupyterserver = workDir.resolve("bin").resolve("jupyter-server");
+        var plist = new ArrayList<>(
+                List.of("--ip=0.0.0.0", "--NotebookApp.allow_origin=*", "--port="+port, "--NotebookApp.disable_check_xsrf=True", "--NotebookApp.port_retries=0",
+                        //"--ServerApp.base_url=/proxy/8889",
+                        //"--ServerApp.base_url=/apps/"+appName+"/notebook",
+                        "--ServerApp.base_url=/api/ocean/spark/cluster/"+clusterId+"/app/"+appName+"/notebook",
+                        "--NotebookApp.token=''",
+                        "--no-browser",
+                        "--notebook-dir" + workDir)); //, "--NotebookApp.token","''","--NotebookApp.disable_check_xsrf","True"));
+        runProcess(plist, Map.of(), jupyterserver.toString());
+    }
+
     /*void stuff() {
         int pyPort = connectInfo.stream().filter(r -> r.getString(0).equals("py4j")).map(r -> r.getInt(1)).findFirst().orElseThrow();
                 var pythonPath = Path.of("/opt/spark/python");
@@ -561,6 +605,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             var useRBackend = sc.conf().get("spark.code.submission.sparkr", "true");
             var useCodeTunnel = sc.conf().get("spark.code.tunnel", "false");
             var useCodeServer = sc.conf().get("spark.code.server", "");
+            var useJupyterServer = sc.conf().get("spark.code.jupyter", "");
             var useHive = sc.conf().get("spark.code.submission.hive", "true");
             if (useSparkConnect.equalsIgnoreCase("true")) SparkConnectService.start();
 
@@ -579,6 +624,19 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     logger.info("No default code server port: " + useCodeServer, e);
                 }
                 startCodeServer(workDir, codeServerPort);
+            }
+            if (useJupyterServer.length()>0) {
+                int jupyterServerPort = 8888;
+                try {
+                    jupyterServerPort = Integer.parseInt(useJupyterServer);
+                } catch (NumberFormatException e) {
+                    logger.info("No default code server port: " + useJupyterServer, e);
+                }
+                try {
+                    startCodeJupyter(workDir, jupyterServerPort, sc.appName());
+                } catch (ApiException e) {
+                    logger.error("Unable to call kubernetes api when starting jupyter server", e);
+                }
             }
             if (useCodeTunnel.equalsIgnoreCase("true")) startCodeTunnel(workDir);
 

@@ -59,5 +59,11 @@
       <version>1.23.0</version>
       <scope>runtime</scope>
     </dependency>
+    <dependency>
+      <groupId>io.kubernetes</groupId>
+      <artifactId>client-java</artifactId>
+      <version>18.0.0</version>
+      <scope>runtime</scope>
+    </dependency>
   </dependencies>
 </project>

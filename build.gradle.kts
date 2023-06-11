@@ -114,6 +114,7 @@ dependencies {
     implementation("io.undertow:undertow-core:2.3.5.Final")
     implementation("com.fasterxml.jackson.core:jackson-databind:2.14.2")
     implementation("org.apache.commons:commons-compress:1.23.0")
+    implementation("io.kubernetes:client-java:18.0.0")
 
     testImplementation(platform("org.junit:junit-bom:5.9.2"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")
