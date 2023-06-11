@@ -525,12 +525,13 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         return Optional.empty();
     }
 
-    void startCodeJupyter(Path workDir, int port, String appName) throws IOException, ApiException {
+    void startCodeJupyter(Path workDir, int port, String appName) throws IOException, ApiException, InterruptedException {
+        logger.info("Install JupyterLab");
         runProcess(List.of(
                 "install",
                 "--target",
                 workDir.toString(),
-                "jupyterlab"), Map.of(), "pip");
+                "jupyterlab"), Map.of(), "pip", true, null).waitFor();
 
         var client = Config.defaultClient();
         //client.setBasePath("https://your-kubernetes-cluster-url");
@@ -542,16 +543,16 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         assert labels != null;
         var clusterId = labels.get("bigdata.spot.io/cluster-id");
 
+        System.err.println("Starting JupyterLab");
         var jupyterserver = workDir.resolve("bin").resolve("jupyter-server");
-        var plist = new ArrayList<>(
-                List.of("--ip=0.0.0.0", "--NotebookApp.allow_origin=*", "--port="+port, "--NotebookApp.disable_check_xsrf=True", "--NotebookApp.port_retries=0",
+        var plist = List.of("--ip=0.0.0.0", "--NotebookApp.allow_origin=*", "--port="+port, "--NotebookApp.disable_check_xsrf=True", "--NotebookApp.port_retries=0",
                         //"--ServerApp.base_url=/proxy/8889",
                         //"--ServerApp.base_url=/apps/"+appName+"/notebook",
                         "--ServerApp.base_url=/api/ocean/spark/cluster/"+clusterId+"/app/"+appName+"/notebook",
                         "--NotebookApp.token=''",
                         "--no-browser",
-                        "--notebook-dir" + workDir)); //, "--NotebookApp.token","''","--NotebookApp.disable_check_xsrf","True"));
-        runProcess(plist, Map.of(), jupyterserver.toString());
+                        "--notebook-dir" + workDir); //, "--NotebookApp.token","''","--NotebookApp.disable_check_xsrf","True"));
+        runProcess(plist, Map.of(), jupyterserver.toString(), true, null);
     }
 
     /*void stuff() {
