@@ -537,6 +537,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         //client.setBasePath("https://your-kubernetes-cluster-url");
         var api = new CoreV1Api(client);
 
+        System.err.println("Read pod "+appName);
         var pod = api.readNamespacedPod(appName+"-driver", "spark-apps", null);
         var labels = Objects.requireNonNull(pod.getMetadata())
                 .getLabels();

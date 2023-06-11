@@ -27,11 +27,11 @@
         {
           "name": "codesubmission-1.0.0.jar",
           "url": "codesubmission-1.0.0.jar",
-          "size": 53334,
-          "sha512": "28b7831788262fdc6a5302717eea47968c0b25d5341d5b5bf5300f2897e6d0124662e6a69b24b505ace3df6757a6d9e2aaf2f03979dfa61b80a17fe15ad62a83",
-          "sha256": "36aeb04ebb47461f9bcd95eb92d7ef9a9cb4d34642982eff6bf1a9bc0a7e9ada",
-          "sha1": "f2c5b32ba4ca74b9bb77c5625fb1155de89d7bc4",
-          "md5": "5c092cf93021b4ebe40c95d6c0615f8d"
+          "size": 53366,
+          "sha512": "a32b0bc58bb23d19f1d2705f4fe4cc1a1646602d576e0544c478400f0d0e46272fed71aa57538af6356b35b36f56d55c96110a2ea1359d4caee4d92258ce0d97",
+          "sha256": "d36a240851ac51b46cd63aae584d4d5de793ddfd46644ecccbd9f2ef83c11a49",
+          "sha1": "7dfd36066211c54a9c5f1ff9d48bee455218d9cc",
+          "md5": "43558be0c67d65534dd97d8ae3fbd420"
         }
       ]
     },
@@ -107,17 +107,24 @@
           "version": {
             "requires": "18.0.0"
           }
+        },
+        {
+          "group": "com.google.code.gson",
+          "module": "gson",
+          "version": {
+            "requires": "2.10.1"
+          }
         }
       ],
       "files": [
         {
           "name": "codesubmission-1.0.0.jar",
           "url": "codesubmission-1.0.0.jar",
-          "size": 53334,
-          "sha512": "28b7831788262fdc6a5302717eea47968c0b25d5341d5b5bf5300f2897e6d0124662e6a69b24b505ace3df6757a6d9e2aaf2f03979dfa61b80a17fe15ad62a83",
-          "sha256": "36aeb04ebb47461f9bcd95eb92d7ef9a9cb4d34642982eff6bf1a9bc0a7e9ada",
-          "sha1": "f2c5b32ba4ca74b9bb77c5625fb1155de89d7bc4",
-          "md5": "5c092cf93021b4ebe40c95d6c0615f8d"
+          "size": 53366,
+          "sha512": "a32b0bc58bb23d19f1d2705f4fe4cc1a1646602d576e0544c478400f0d0e46272fed71aa57538af6356b35b36f56d55c96110a2ea1359d4caee4d92258ce0d97",
+          "sha256": "d36a240851ac51b46cd63aae584d4d5de793ddfd46644ecccbd9f2ef83c11a49",
+          "sha1": "7dfd36066211c54a9c5f1ff9d48bee455218d9cc",
+          "md5": "43558be0c67d65534dd97d8ae3fbd420"
         }
       ]
     }

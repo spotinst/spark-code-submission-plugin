@@ -115,6 +115,7 @@ dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.14.2")
     implementation("org.apache.commons:commons-compress:1.23.0")
     implementation("io.kubernetes:client-java:18.0.0")
+    implementation("com.google.code.gson:gson:2.10.1")
 
     testImplementation(platform("org.junit:junit-bom:5.9.2"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")
