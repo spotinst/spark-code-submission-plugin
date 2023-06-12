@@ -568,8 +568,8 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         var clusterId = getClusterIdFabric8(appName);
 
         System.err.println("Starting JupyterLab");
-        var jupyterserver = installDir.resolve("bin").resolve("jupyter-server");
-        var plist = List.of("--ip=0.0.0.0", "--NotebookApp.allow_origin=*", "--port="+port, "--NotebookApp.disable_check_xsrf=True", "--NotebookApp.port_retries=0",
+        var jupyterserver = installDir.resolve("bin").resolve("jupyter");
+        var plist = List.of("lab", "--ip=0.0.0.0", "--NotebookApp.allow_origin=*", "--port="+port, "--NotebookApp.disable_check_xsrf=True", "--NotebookApp.port_retries=0",
                         //"--ServerApp.base_url=/proxy/8889",
                         //"--ServerApp.base_url=/apps/"+appName+"/notebook",
                         "--ServerApp.base_url=/api/ocean/spark/cluster/"+clusterId+"/app/"+appName+"/notebook",
