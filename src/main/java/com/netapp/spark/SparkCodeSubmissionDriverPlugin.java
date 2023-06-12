@@ -564,11 +564,14 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 "--target",
                 installDir.toString(),
                 "jupyterlab", "jupyter_server"), Map.of(), "pip", true, null).waitFor();
+        var jupyter = installDir.resolve("bin").resolve("jupyter");
+        runProcess(List.of(
+                "lab",
+                "build"), Map.of("PYTHONPATH", installDir.toString()), jupyter.toString(), true, null).waitFor();
 
         var clusterId = getClusterIdFabric8(appName);
 
         System.err.println("Starting JupyterLab");
-        var jupyterserver = installDir.resolve("bin").resolve("jupyter");
         var plist = List.of("lab", "--ip=0.0.0.0", "--NotebookApp.allow_origin=*", "--port="+port, "--NotebookApp.disable_check_xsrf=True", "--NotebookApp.port_retries=0",
                         //"--ServerApp.base_url=/proxy/8889",
                         //"--ServerApp.base_url=/apps/"+appName+"/notebook",
@@ -585,7 +588,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 "JUPYTER_DATA_DIR",
                 workDir.toString(),
                 "JUPYTER_RUNTIME_DIR",
-                workDir.toString()), jupyterserver.toString(), true, null);
+                workDir.toString()), jupyter.toString(), true, null);
     }
 
     /*void stuff() {
