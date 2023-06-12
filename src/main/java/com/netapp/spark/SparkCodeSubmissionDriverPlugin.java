@@ -576,7 +576,11 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                         "--NotebookApp.token=''",
                         "--no-browser",
                         "--notebook-dir=" + workDir); //, "--NotebookApp.token","''","--NotebookApp.disable_check_xsrf","True"));
-        runProcess(plist, Map.of("JUPYTER_CONFIG_DIR",
+        runProcess(plist, Map.of(
+                "HOME", workDir.toString(),
+                "PYTHONPATH", installDir.toString(),
+                "SPARK_HOME", "/opt/spark",
+                "JUPYTER_CONFIG_DIR",
                 workDir.toString(),
                 "JUPYTER_DATA_DIR",
                 workDir.toString(),
