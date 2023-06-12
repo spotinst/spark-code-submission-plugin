@@ -2,6 +2,11 @@ package com.netapp.spark;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.fabric8.kubernetes.api.model.Pod;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientBuilder;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.undertow.Undertow;
 
 import io.kubernetes.client.openapi.ApiException;
@@ -525,14 +530,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         return Optional.empty();
     }
 
-    void startCodeJupyter(Path workDir, int port, String appName) throws IOException, ApiException, InterruptedException {
-        logger.info("Install JupyterLab");
-        runProcess(List.of(
-                "install",
-                "--target",
-                workDir.toString(),
-                "jupyterlab"), Map.of(), "pip", true, null).waitFor();
-
+    String getClusterId(String appName) throws IOException, ApiException {
         var client = Config.defaultClient();
         //client.setBasePath("https://your-kubernetes-cluster-url");
         var api = new CoreV1Api(client);
@@ -542,7 +540,31 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         var labels = Objects.requireNonNull(pod.getMetadata())
                 .getLabels();
         assert labels != null;
-        var clusterId = labels.get("bigdata.spot.io/cluster-id");
+        return labels.get("bigdata.spot.io/cluster-id");
+    }
+
+    String getClusterIdFabric8(String appName) {
+        String namespace = "spark-apps";
+        String podName = appName+"-driver";
+
+        var kubernetesClientBuilder = new KubernetesClientBuilder();
+        try (KubernetesClient client = kubernetesClientBuilder.build()) {
+            Pod pod = client.pods().inNamespace(namespace).withName(podName).get();
+            assert pod != null;
+            var labels = Objects.requireNonNull(pod.getMetadata()).getLabels();
+            return labels.get("bigdata.spot.io/cluster-id");
+        }
+    }
+
+    void startCodeJupyter(Path workDir, int port, String appName) throws IOException, ApiException, InterruptedException {
+        logger.info("Install JupyterLab");
+        runProcess(List.of(
+                "install",
+                "--target",
+                workDir.toString(),
+                "jupyterlab"), Map.of(), "pip", true, null).waitFor();
+
+        var clusterId = getClusterIdFabric8(appName);
 
         System.err.println("Starting JupyterLab");
         var jupyterserver = workDir.resolve("bin").resolve("jupyter-server");
@@ -552,7 +574,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                         "--ServerApp.base_url=/api/ocean/spark/cluster/"+clusterId+"/app/"+appName+"/notebook",
                         "--NotebookApp.token=''",
                         "--no-browser",
-                        "--notebook-dir" + workDir); //, "--NotebookApp.token","''","--NotebookApp.disable_check_xsrf","True"));
+                        "--notebook-dir=" + workDir); //, "--NotebookApp.token","''","--NotebookApp.disable_check_xsrf","True"));
         runProcess(plist, Map.of(), jupyterserver.toString(), true, null);
     }
 
