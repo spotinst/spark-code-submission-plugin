@@ -558,16 +558,17 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
 
     void startCodeJupyter(Path workDir, int port, String appName) throws IOException, ApiException, InterruptedException {
         logger.info("Install JupyterLab");
+        var installDir = workDir.resolve("jupyter");
         runProcess(List.of(
                 "install",
                 "--target",
-                workDir.toString(),
+                installDir.toString(),
                 "jupyterlab"), Map.of(), "pip", true, null).waitFor();
 
         var clusterId = getClusterIdFabric8(appName);
 
         System.err.println("Starting JupyterLab");
-        var jupyterserver = workDir.resolve("bin").resolve("jupyter-server");
+        var jupyterserver = installDir.resolve("bin").resolve("jupyter-server");
         var plist = List.of("--ip=0.0.0.0", "--NotebookApp.allow_origin=*", "--port="+port, "--NotebookApp.disable_check_xsrf=True", "--NotebookApp.port_retries=0",
                         //"--ServerApp.base_url=/proxy/8889",
                         //"--ServerApp.base_url=/apps/"+appName+"/notebook",
@@ -575,7 +576,12 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                         "--NotebookApp.token=''",
                         "--no-browser",
                         "--notebook-dir=" + workDir); //, "--NotebookApp.token","''","--NotebookApp.disable_check_xsrf","True"));
-        runProcess(plist, Map.of(), jupyterserver.toString(), true, null);
+        runProcess(plist, Map.of("JUPYTER_CONFIG_DIR",
+                workDir.toString(),
+                "JUPYTER_DATA_DIR",
+                workDir.toString(),
+                "JUPYTER_RUNTIME_DIR",
+                workDir.toString()), jupyterserver.toString(), true, null);
     }
 
     /*void stuff() {
