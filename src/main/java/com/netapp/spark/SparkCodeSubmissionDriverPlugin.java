@@ -563,7 +563,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 "install",
                 "--target",
                 installDir.toString(),
-                "jupyterlab"), Map.of(), "pip", true, null).waitFor();
+                "jupyterlab", "jupyter_server"), Map.of(), "pip", true, null).waitFor();
 
         var clusterId = getClusterIdFabric8(appName);
 
