@@ -585,10 +585,11 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         }
         var pathvar = System.getenv("PATH")+":"+nodepath;
         System.err.println("Using pathvar " + pathvar);
+        var appDir = workDir.resolve("lab");
         runProcess(List.of(
                     "lab",
                     "build",
-                    "--app-dir="+ workDir,
+                    "--app-dir="+appDir,
                     "--dev-build=False",
                     "--minimize=False"),
                 Map.of( "PATH", pathvar,
@@ -601,6 +602,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         var plist = List.of("lab", "--ip=0.0.0.0", "--NotebookApp.allow_origin=*", "--port="+port, "--NotebookApp.disable_check_xsrf=True", "--NotebookApp.port_retries=0",
                         //"--ServerApp.base_url=/proxy/8889",
                         //"--ServerApp.base_url=/apps/"+appName+"/notebook",
+                        "--app-dir="+appDir,
                         "--ServerApp.base_url=/api/ocean/spark/cluster/"+clusterId+"/app/"+appName+"/notebook",
                         "--NotebookApp.token=''",
                         "--no-browser",
