@@ -567,15 +567,11 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         var jupyter = installDir.resolve("bin").resolve("jupyter");
         runProcess(List.of(
                 "lab",
-                "build"),
+                "build",
+                "--app-dir",
+                workDir.toString()),
                 Map.of("PYTHONPATH",
-                installDir.toString(),
-                "JUPYTER_CONFIG_DIR",
-                workDir.toString(),
-                "JUPYTER_DATA_DIR",
-                workDir.toString(),
-                "JUPYTER_RUNTIME_DIR",
-                workDir.toString()), jupyter.toString(), true, null).waitFor();
+                installDir.toString()), jupyter.toString(), true, null).waitFor();
 
         var clusterId = getClusterIdFabric8(appName);
 
