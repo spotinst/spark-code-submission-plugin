@@ -19,6 +19,7 @@ import io.undertow.util.Headers;
 import io.undertow.websockets.core.WebSocketChannel;
 import io.undertow.websockets.spi.WebSocketHttpExchange;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.spark.SparkContext;
 import org.apache.spark.api.plugin.PluginContext;
@@ -473,9 +474,8 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         codeSubmissionServer.start();
     }
 
-    void startCodeTunnel(Path workDir) throws IOException {
-        var url = new URL("https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64");
-        try (var gzip = new GZIPInputStream(url.openStream()); var tar = new TarArchiveInputStream(gzip)) {
+    public void untar(URL url, Path workDir, boolean gz) throws IOException {
+        try (var gzip = gz ? new GZIPInputStream(url.openStream()) : new XZCompressorInputStream(url.openStream()); var tar = new TarArchiveInputStream(gzip)) {
             var entry = tar.getNextEntry();
             while (entry != null) {
                 var file = workDir.resolve(entry.getName());
@@ -487,6 +487,11 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 entry = tar.getNextEntry();
             }
         }
+    }
+
+    void startCodeTunnel(Path workDir) throws IOException {
+        var url = new URL("https://code.visualstudio.com/sha/download?build=stable&os=cli-alpine-x64");
+        untar(url, workDir, true);
         var code = Path.of("code");
         var codePath = workDir.resolve(code);
         Files.setPosixFilePermissions(codePath, PosixFilePermissions.fromString("rwxr-xr-x"));
@@ -565,13 +570,17 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 installDir.toString(),
                 "jupyterlab", "jupyter_server"), Map.of(), "pip", true, null).waitFor();
         var jupyter = installDir.resolve("bin").resolve("jupyter");
+        var url = "https://nodejs.org/dist/v18.16.0/node-v18.16.0-linux-x64.tar.xz";
+        var uri = URI.create(url);
+        untar(uri.toURL(), workDir, false);
         runProcess(List.of(
                     "lab",
                     "build",
                     "--app-dir="+ workDir,
                     "--dev-build=False",
                     "--minimize=False"),
-                Map.of( "HOME", workDir.toString(),
+                Map.of( "PATH", workDir.resolve("node-v18.16.0-linux-x64").resolve("bin").toString(),
+                        "HOME", workDir.toString(),
                         "PYTHONPATH", installDir.toString()), jupyter.toString(), true, null).waitFor();
 
         var clusterId = getClusterIdFabric8(appName);

@@ -8,6 +8,8 @@ import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.*;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -119,6 +121,12 @@ public class SparkCodeSubmissionDriverPluginTest {
         sparkCodeSubmissionDriverPlugin.init(spark.sparkContext(), null);
         var codeSubmission = new CodeSubmission(CodeSubmissionType.JAVA, "public class TestClass { public static String testMethod() { return \"Hello World!\"; } }", "TestClass", List.of(), Map.of(),"", "", "");
         sparkCodeSubmissionDriverPlugin.shutdown();
+    }
+
+    @Test
+    @Disabled
+    public void testUntar() throws IOException {
+        sparkCodeSubmissionDriverPlugin.untar(URI.create("https://nodejs.org/dist/v18.16.0/node-v18.16.0-linux-x64.tar.xz").toURL(), Path.of("/tmp"), false);
     }
 
     @AfterAll
