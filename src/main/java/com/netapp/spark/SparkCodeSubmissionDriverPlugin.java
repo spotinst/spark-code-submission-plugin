@@ -573,7 +573,17 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         var url = "https://nodejs.org/dist/v18.16.0/node-v18.16.0-linux-x64.tar.xz";
         var uri = URI.create(url);
         untar(uri.toURL(), workDir, false);
-        var pathvar = System.getenv("PATH")+":"+ workDir.resolve("node-v18.16.0-linux-x64").resolve("bin");
+        var nodepath = workDir.resolve("node-v18.16.0-linux-x64").resolve("bin");
+        try (var flist = Files.list(nodepath)) {
+            flist.forEach(p -> {
+                try {
+                    Files.setPosixFilePermissions(p, PosixFilePermissions.fromString("rwxr-xr-x"));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+        var pathvar = System.getenv("PATH")+":"+nodepath;
         System.err.println("Using pathvar " + pathvar);
         runProcess(List.of(
                     "lab",
