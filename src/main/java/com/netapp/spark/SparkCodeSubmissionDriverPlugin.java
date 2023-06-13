@@ -573,13 +573,15 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         var url = "https://nodejs.org/dist/v18.16.0/node-v18.16.0-linux-x64.tar.xz";
         var uri = URI.create(url);
         untar(uri.toURL(), workDir, false);
+        var pathvar = System.getenv("PATH")+":"+ workDir.resolve("node-v18.16.0-linux-x64").resolve("bin");
+        System.err.println("Using pathvar " + pathvar);
         runProcess(List.of(
                     "lab",
                     "build",
                     "--app-dir="+ workDir,
                     "--dev-build=False",
                     "--minimize=False"),
-                Map.of( "PATH", workDir.resolve("node-v18.16.0-linux-x64").resolve("bin").toString(),
+                Map.of( "PATH", pathvar,
                         "HOME", workDir.toString(),
                         "PYTHONPATH", installDir.toString()), jupyter.toString(), true, null).waitFor();
 
