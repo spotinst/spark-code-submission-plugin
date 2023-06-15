@@ -13,7 +13,6 @@ else:
     pip.main(['install', '--target', '/opt/spark/work-dir', 'xyzservices', 'geopandas', 'bokeh', 'pycryptodome', 'future', 'IPython', 'ipython_genutils', 'ipykernel', 'jedi', 'jupyter_client', 'jupyter_core', 'parso', 'pexpect', 'pickleshare', 'prompt-toolkit', 'ptyprocess', 'pygments', 'python-dateutil', 'pyzmq', 'setuptools', 'six', 'traitlets', 'wcwidth'])
     path = 'launch_ipykernel_old.py'
 
-#print(f"hey! {path}")
 with open(f'{parent}/{path}', 'r') as f:
     script = f.read()
 

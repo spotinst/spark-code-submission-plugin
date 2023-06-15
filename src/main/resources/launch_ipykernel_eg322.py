@@ -264,7 +264,7 @@ def return_connection_info(
     """
     response_parts = response_addr.split(":")
     if len(response_parts) != 2:
-        logger.error(
+        logger.info(
             f"Invalid format for response address '{response_addr}'. Assuming 'pull' mode..."
         )
         return
@@ -273,7 +273,7 @@ def return_connection_info(
     try:
         response_port = int(response_parts[1])
     except ValueError:
-        logger.error(
+        logger.info(
             f"Invalid port component found in response address '{response_addr}'. Assuming 'pull' mode..."
         )
         return
@@ -295,9 +295,9 @@ def return_connection_info(
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((response_ip, response_port))
         json_content = json.dumps(cf_json).encode(encoding="utf-8")
-        logger.debug(f"JSON Payload '{json_content}")
+        logger.info(f"JSON Payload '{json_content}")
         payload = _encrypt(json_content, public_key)
-        logger.debug(f"Encrypted Payload '{payload}")
+        logger.info(f"Encrypted Payload '{payload}")
         s.send(payload)
 
     return comm_sock

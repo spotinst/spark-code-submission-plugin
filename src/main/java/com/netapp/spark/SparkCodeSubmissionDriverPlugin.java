@@ -18,6 +18,7 @@ import io.undertow.server.handlers.BlockingHandler;
 import io.undertow.util.Headers;
 import io.undertow.websockets.core.WebSocketChannel;
 import io.undertow.websockets.spi.WebSocketHttpExchange;
+import launcher.ToreeLauncher;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
 import org.apache.hadoop.hive.conf.HiveConf;
@@ -411,10 +412,11 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                             var arguments = configOverridesMap.get("arguments");
                             if (arguments instanceof List) {
                                 var argumentsList = (List<String>) arguments;
-                                var args = new ArrayList<String>();
-                                args.add("src/main/resources/launch_ipykernel_old.py");
+                                ToreeLauncher.main(argumentsList.toArray(String[]::new));
+                                /*var args = new ArrayList<String>();
+                                args.add("src/main/resources/launch_ipykernel.py");
                                 args.addAll(argumentsList);
-                                runProcess(args, Collections.emptyMap(), "python3");
+                                runProcess(args, Collections.emptyMap(), "python3");*/
                             }
                         }
                     } else {

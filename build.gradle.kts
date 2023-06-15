@@ -109,6 +109,7 @@ dependencies {
     implementation("org.apache.spark:spark-core_2.12:3.4.0")
     implementation("org.apache.spark:spark-connect_2.12:3.4.0")
     implementation("org.apache.spark:spark-sql_2.12:3.4.0")
+    implementation("org.apache.spark:spark-repl_2.12:3.4.0")
     implementation("org.apache.spark:spark-hive_2.12:3.4.0")
     implementation("org.apache.spark:spark-hive-thriftserver_2.12:3.4.0")
     implementation("io.undertow:undertow-core:2.3.5.Final")
@@ -117,6 +118,8 @@ dependencies {
     implementation("io.kubernetes:client-java:18.0.0")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("io.fabric8:kubernetes-client:6.7.1")
+
+    implementation(files("src/main/jib/opt/spark/jars/toree.jar"))
 
     testImplementation(platform("org.junit:junit-bom:5.9.2"))
     testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")

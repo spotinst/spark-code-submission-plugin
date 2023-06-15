@@ -226,7 +226,7 @@ def _encrypt(connection_info, conn_file):
 def return_connection_info(connection_file, response_addr, lower_port, upper_port):
     response_parts = response_addr.split(":")
     if len(response_parts) != 2:
-        logger.error(
+        logger.info(
             "Invalid format for response address '{}'. "
             "Assuming 'pull' mode...".format(response_addr)
         )
@@ -236,7 +236,7 @@ def return_connection_info(connection_file, response_addr, lower_port, upper_por
     try:
         response_port = int(response_parts[1])
     except ValueError:
-        logger.error(
+        logger.info(
             "Invalid port component found in response address '{}'. "
             "Assuming 'pull' mode...".format(response_addr)
         )
@@ -259,9 +259,9 @@ def return_connection_info(connection_file, response_addr, lower_port, upper_por
     try:
         s.connect((response_ip, response_port))
         json_content = json.dumps(cf_json).encode(encoding="utf-8")
-        logger.debug("JSON Payload '{}".format(json_content))
+        logger.info("JSON Payload '{}".format(json_content))
         payload = _encrypt(json_content, connection_file)
-        logger.debug("Encrypted Payload '{}".format(payload))
+        logger.info("Encrypted Payload '{}".format(payload))
         s.send(payload)
     finally:
         s.close()

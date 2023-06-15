@@ -6,16 +6,22 @@ import java.nio.file.Path;
 
 public class NotebookInitContainer {
     public static void main(String[] args) throws IOException {
+        var sparkDir = Path.of("/opt/spark");
+        var workDir = sparkDir.resolve("work-dir");
+        var libDir = workDir.resolve("lib");
+        var jarsDir = sparkDir.resolve("jars");
         try (var is = NotebookInitContainer.class.getResourceAsStream("/launch_ipykernel.py");
              var isold = NotebookInitContainer.class.getResourceAsStream("/launch_ipykernel_old.py");
              var iseg322 = NotebookInitContainer.class.getResourceAsStream("/launch_ipykernel_eg322.py")) {
             if (is != null && isold != null && iseg322 != null) {
-                var path = Path.of("/opt/spark/work-dir/launch_ipykernel.py");
-                var path_old = Path.of("/opt/spark/work-dir/launch_ipykernel_old.py");
-                var path_eg322 = Path.of("/opt/spark/work-dir/launch_ipykernel_eg322.py");
+                Files.createDirectories(libDir);
+                var path = workDir.resolve("launch_ipykernel.py");
+                var path_old = workDir.resolve("launch_ipykernel_old.py");
+                var path_eg322 = workDir.resolve("launch_ipykernel_eg322.py");
                 Files.copy(is, path);
                 Files.copy(isold, path_old);
                 Files.copy(iseg322, path_eg322);
+                Files.copy(jarsDir.resolve("toree.jar"), libDir.resolve("toree.jar"));
                 System.err.println("launch_ipykernel.py written to " + path);
             } else {
                 System.err.println("launch_ipykernel.py not found");
