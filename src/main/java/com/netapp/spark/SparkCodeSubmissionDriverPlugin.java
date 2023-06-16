@@ -678,7 +678,8 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             }
             var workDir = Path.of("/opt/spark/work-dir");
             var checkoutGit = sc.conf().get("spark.code.git.checkout", "");
-            if (checkoutGit.equalsIgnoreCase("true")) {
+            if (!checkoutGit.isEmpty()) {
+                logger.info("Checking out git repo " + checkoutGit + " to " + workDir);
                 Git.cloneRepository().setURI(checkoutGit).setDirectory(workDir.toFile()).call();
             }
 
