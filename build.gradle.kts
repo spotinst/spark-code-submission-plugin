@@ -118,6 +118,7 @@ dependencies {
     implementation("io.kubernetes:client-java:18.0.0")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("io.fabric8:kubernetes-client:6.7.1")
+    implementation("org.eclipse.jgit:org.eclipse.jgit:6.6.0.202305301015-r")
 
     implementation(files("src/main/jib/opt/spark/jars/toree.jar"))
 

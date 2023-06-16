@@ -13,7 +13,7 @@ public class SparkCodeSubmissionPlugin implements SparkPlugin {
 
     @Override
     public ExecutorPlugin executorPlugin() {
-        return new SparkCodeSubmissionExecutorPlugin();
+        return null;
     }
 
     public static void main(String[] args) {

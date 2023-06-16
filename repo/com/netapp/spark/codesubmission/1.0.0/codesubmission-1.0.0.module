@@ -27,11 +27,11 @@
         {
           "name": "codesubmission-1.0.0.jar",
           "url": "codesubmission-1.0.0.jar",
-          "size": 71843,
-          "sha512": "0bcdf30611043f8c4ddd69edd978351080212c878fe3b65ac193a71fda05647c56af5794adaa23a03d1541b299ef68f6d638838ad5273baba2dc7428428c40b6",
-          "sha256": "e9e7046d7ff09737bec08f17fb319d2df9e4ca95063a7e68981e49eb17270ea5",
-          "sha1": "95ab9f64eb4cdaabdb424462f4b798a99a608223",
-          "md5": "813099f395d471a9902faee234a6ad36"
+          "size": 73012,
+          "sha512": "02457691314e982f48fa38ecdd04691c07758a3be63f47e721139c6ce1ac52e7862852d1c41c5513d17c09cdaa00ce3e064faac2e3cfa3b6a5f5dcb447056302",
+          "sha256": "e69df303f4f72337ba163e29b753e8e651c2d464c6073e93dd737a643baf1893",
+          "sha1": "cd911de55ecee62742fa6b7895958b8714aa9d67",
+          "md5": "dc09fc025b3f1e6857a38e8ccec9965d"
         }
       ]
     },
@@ -128,17 +128,24 @@
           "version": {
             "requires": "6.7.1"
           }
+        },
+        {
+          "group": "org.eclipse.jgit",
+          "module": "org.eclipse.jgit",
+          "version": {
+            "requires": "6.6.0.202305301015-r"
+          }
         }
       ],
       "files": [
         {
           "name": "codesubmission-1.0.0.jar",
           "url": "codesubmission-1.0.0.jar",
-          "size": 71843,
-          "sha512": "0bcdf30611043f8c4ddd69edd978351080212c878fe3b65ac193a71fda05647c56af5794adaa23a03d1541b299ef68f6d638838ad5273baba2dc7428428c40b6",
-          "sha256": "e9e7046d7ff09737bec08f17fb319d2df9e4ca95063a7e68981e49eb17270ea5",
-          "sha1": "95ab9f64eb4cdaabdb424462f4b798a99a608223",
-          "md5": "813099f395d471a9902faee234a6ad36"
+          "size": 73012,
+          "sha512": "02457691314e982f48fa38ecdd04691c07758a3be63f47e721139c6ce1ac52e7862852d1c41c5513d17c09cdaa00ce3e064faac2e3cfa3b6a5f5dcb447056302",
+          "sha256": "e69df303f4f72337ba163e29b753e8e651c2d464c6073e93dd737a643baf1893",
+          "sha1": "cd911de55ecee62742fa6b7895958b8714aa9d67",
+          "md5": "dc09fc025b3f1e6857a38e8ccec9965d"
         }
       ]
     }

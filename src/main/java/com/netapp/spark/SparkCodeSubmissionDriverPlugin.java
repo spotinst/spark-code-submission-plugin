@@ -33,6 +33,8 @@ import org.apache.spark.sql.connect.service.SparkConnectService;
 import org.apache.spark.sql.hive.thriftserver.HiveThriftServer2;
 import org.apache.spark.sql.hive.thriftserver.ui.HiveThriftServer2EventManager;
 import org.apache.spark.sql.types.StructType;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Tuple2;
@@ -674,12 +676,18 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     portMap.put(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
                 }
             }
+            var workDir = Path.of("/opt/spark/work-dir");
+            var checkoutGit = sc.conf().get("spark.code.git.checkout", "");
+            if (checkoutGit.equalsIgnoreCase("true")) {
+                Git.cloneRepository().setURI(checkoutGit).setDirectory(workDir.toFile()).call();
+            }
+
             var useSparkConnect = sc.conf().get("spark.code.submission.connect", "true");
             var usePySpark = sc.conf().get("spark.code.submission.pyspark", "true");
             var useRBackend = sc.conf().get("spark.code.submission.sparkr", "true");
             var useCodeTunnel = sc.conf().get("spark.code.tunnel", "false");
-            var useCodeServer = sc.conf().get("spark.code.server", "");
-            var useJupyterServer = sc.conf().get("spark.code.jupyter", "");
+            var useCodeServer = sc.conf().get("spark.code.server.port", "");
+            var useJupyterServer = sc.conf().get("spark.code.jupyter.port", "");
             var useHive = sc.conf().get("spark.code.submission.hive", "true");
             if (useSparkConnect.equalsIgnoreCase("true")) SparkConnectService.start();
 
@@ -689,7 +697,6 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             connectInfo.forEach(row -> logger.info("Connect info: " + row));
             connectInfo.forEach(row -> System.err.println("Connect info: " + row));
 
-            var workDir = Path.of("/opt/spark/work-dir");
             if (useCodeServer.length()>0) {
                 int codeServerPort = 8080;
                 try {
@@ -743,6 +750,8 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             throw e;
         } catch (IOException e) {
             logger.error("Unable to alter pyspark context code", e);
+            throw new RuntimeException(e);
+        } catch (GitAPIException e) {
             throw new RuntimeException(e);
         }
     }
