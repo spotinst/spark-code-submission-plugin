@@ -710,7 +710,14 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 } catch (NumberFormatException e) {
                     logger.info("No default code server port: " + useCodeServer, e);
                 }
-                startCodeServer(workDir, codeServerPort);
+                int codeServerPortFinal = codeServerPort;
+                virtualThreads.submit(() -> {
+                    try {
+                        startCodeServer(workDir, codeServerPortFinal);
+                    } catch (IOException | InterruptedException e) {
+                        logger.error("Error starting code server", e);
+                    }
+                });
             }
             if (useJupyterServer.length()>0) {
                 int jupyterServerPort = 8888;
@@ -719,18 +726,21 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 } catch (NumberFormatException e) {
                     logger.info("No default code server port: " + useJupyterServer, e);
                 }
-                try {
-                    var applicationId = sc.applicationId();
-                    var appName = sc.appName();
-                    var appId = sc.conf().getAppId();
-                    logger.info("Starting jupyter server for application: " + applicationId + " " + appName + " " + appId);
-                    var hostName = InetAddress.getLocalHost().getHostName();
-                    logger.info("Starting jupyter server for host: " + hostName);
-                    appId = hostName.substring(0,hostName.lastIndexOf('-'));
-                    startCodeJupyter(workDir, jupyterServerPort, appId);
-                } catch (ApiException e) {
-                    logger.error("Unable to call kubernetes api when starting jupyter server", e);
-                }
+                int jupyterServerPortFinal = jupyterServerPort;
+                //var applicationId = sc.applicationId();
+                //var appName = sc.appName();
+                //var appId = sc.conf().getAppId();
+                //logger.info("Starting jupyter server for application: " + applicationId + " " + appName + " " + appId);
+                var hostName = InetAddress.getLocalHost().getHostName();
+                logger.info("Starting jupyter server for host: " + hostName);
+                var appId = hostName.substring(0,hostName.lastIndexOf('-'));
+                virtualThreads.submit(() -> {
+                    try {
+                        startCodeJupyter(workDir, jupyterServerPortFinal, appId);
+                    } catch (IOException | ApiException | InterruptedException e) {
+                        logger.error("Unable to start jupyter server", e);
+                    }
+                });
             }
             if (useCodeTunnel.equalsIgnoreCase("true")) startCodeTunnel(workDir);
 
