@@ -54,6 +54,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -679,8 +680,12 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
             var workDir = Path.of("/opt/spark/work-dir");
             var checkoutGit = sc.conf().get("spark.code.git.checkout", "");
             if (!checkoutGit.isEmpty()) {
-                logger.info("Checking out git repo " + checkoutGit + " to " + workDir);
-                Git.cloneRepository().setURI(checkoutGit).setDirectory(workDir.toFile()).call();
+                var uri = URI.create(checkoutGit);
+                var list = Arrays.stream(uri.getPath().split("/")).filter(s -> !s.isEmpty()).collect(Collectors.toList());
+                var repoName = list.get(list.size() - 1);
+                var repoDir = workDir.resolve(repoName);
+                logger.info("Checking out git repo " + checkoutGit + " to " + repoDir);
+                Git.cloneRepository().setURI(checkoutGit).setDirectory(repoDir.toFile()).call();
             }
 
             var useSparkConnect = sc.conf().get("spark.code.submission.connect", "true");
