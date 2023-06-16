@@ -714,7 +714,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     logger.info("No default code server port: " + useJupyterServer, e);
                 }
                 try {
-                    startCodeJupyter(workDir, jupyterServerPort, sc.appName());
+                    startCodeJupyter(workDir, jupyterServerPort, sc.applicationId());
                 } catch (ApiException e) {
                     logger.error("Unable to call kubernetes api when starting jupyter server", e);
                 }
