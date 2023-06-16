@@ -7,5 +7,6 @@ public enum CodeSubmissionType {
     JAVA,
     R,
     SQL,
-    COMMAND
+    COMMAND,
+    COST
 }

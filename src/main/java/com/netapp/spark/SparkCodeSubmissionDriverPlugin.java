@@ -73,6 +73,7 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     Map<Integer,Integer> portMap = new ConcurrentHashMap<>();
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     boolean done = false;
+    List<String> costList = new ArrayList<>();
 
     public SparkCodeSubmissionDriverPlugin() {
         this(-1);
@@ -330,6 +331,12 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 args.add("--existing");
                 args.add("kernel-" + pyport + ".json");*/
                 runProcess(codeSubmission.arguments(), codeSubmission.environment(), processName);
+                break;
+            case COST:
+                var cost = codeSubmission.code();
+                logger.info("Adding cost" + cost);
+                costList.add(cost);
+                sqlContext.createDataset(costList, Encoders.STRING()).createOrReplaceGlobalTempView("cost");
                 break;
             default:
                 logger.error("Unknown code type: "+codeSubmission.type());

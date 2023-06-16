@@ -16,7 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.toree.Main;
+//import org.apache.toree.Main;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import launcher.utils.SecurityUtils;
@@ -356,7 +356,7 @@ public class ToreeLauncher {
                 System.out.println(arg);
             }
             System.out.println("---------------------------");
-            Main.main(toreeArgs.toArray(String[]::new));
+            //Main.main(toreeArgs.toArray(String[]::new));
         } catch (IOException | NoSuchPaddingException | IllegalBlockSizeException | NoSuchAlgorithmException |
                  BadPaddingException | InvalidKeySpecException | InvalidKeyException e) {
             e.printStackTrace();
