@@ -11,15 +11,6 @@ version = "1.0.0"
 
 var theJvmArgs = listOf(
     "--enable-preview",
-    /*"--add-opens=java.base/java.util.regex=ALL-UNNAMED",
-    "--add-opens=java.base/java.lang=ALL-UNNAMED",
-    "--add-opens=java.base/java.time=ALL-UNNAMED",
-    "--add-opens=java.base/java.util.stream=ALL-UNNAMED",
-    "--add-opens=java.base/java.nio.charset=ALL-UNNAMED",
-    "--add-opens=java.base/java.nio=ALL-UNNAMED",
-    "--add-opens=java.base/java.io=ALL-UNNAMED",
-    "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
-    "--add-opens=java.base/sun.security.action=ALL-UNNAMED"*/
 )
 
 repositories {
@@ -36,10 +27,6 @@ jib {
                 architecture = "amd64"
                 os = "linux"
             }
-            /*platform {
-                architecture = "arm64"
-                os = "linux"
-            }*/
         }
         if (project.hasProperty("REGISTRY_USER")) {
             auth {
@@ -61,41 +48,9 @@ jib {
             }
         }
     }
-    /*pluginExtensions {
-        pluginExtension {
-            implementation = "com.google.cloud.tools.jib.gradle.extension.nativeimage.JibNativeImageExtension"
-            properties = mapOf(
-                "imageName" to "com.netapp.spark.NotebookInitContainer",
-            )
-        }
-    }*/
-//    pluginExtensions {
-//        pluginExtension {
-//            implementation = "com.google.cloud.tools.jib.gradle.extension.ownership.JibOwnershipExtension"
-//            configuration {
-//                "rules" to listOf(
-//                        "rule" to mapOf(
-//                                "filePattern" to "/opt/spark/**",
-//                                "glob" to "/opt/spark/**",
-//                                "ownership" to "app:app"
-//                        )
-//                )
-//            }
-//        }
-//    }
-    //containerizingMode = "packaged"
     container {
-        //user = "app:app"
-        //entrypoint = listOf("/opt/entrypoint.sh")
-        //workingDirectory = "/opt/spark/work-dir/"
-        //appRoot = "/opt/spark/"
-        //mainClass = "com.netapp.spark.SparkCodeSubmissionServer"
         mainClass = "com.netapp.spark.NotebookInitContainer"
-        //mainClass = "com.netapp.spark.SparkConnectWebsocketTranscodeDriverPlugin"
-        //environment = mapOf("SPARK_REMOTE" to "sc://localhost")
-        //environment = mapOf("JAVA_TOOL_OPTIONS" to "-Djdk.lang.processReaperUseDefaultStackSize=true --add-opens=java.base/sun.nio.ch=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED")
         jvmFlags = theJvmArgs
-        //args = listOf("9001")
     }
 }
 
@@ -140,21 +95,11 @@ publishing {
         maven {
             url = uri(layout.projectDirectory.dir("repo"))
         }
-        /*maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/sigmarkarl/SparkCodeSubmissionPlugin")
-            credentials {
-                username = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
-                password = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
-            }
-        }*/
     }
 }
 
 application {
     mainClass.set("com.netapp.spark.SparkCodeSubmissionServer")
-    //mainClass.set("com.netapp.spark.SparkConnectWebsocketTranscodeDriverPlugin")
-    //applicationArguments = listOf("9001", "local[*]")
     applicationDefaultJvmArgs = theJvmArgs
 }
 
@@ -164,7 +109,6 @@ tasks {
         dependsOn.addAll(listOf("compileJava", "processResources")) // We need this for Gradle optimization to work
         archiveClassifier.set("sparkcodesubmissionplugin") // Naming the jar
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-        //manifest { attributes(mapOf("Main-Class" to application.mainClass, "")) } // Provided we set it up in the application plugin configuration
         val sourcesMain = sourceSets.main.get()
         val contents = configurations.runtimeClasspath.get()
             .map { if (it.isDirectory) it else zipTree(it) } +
@@ -172,7 +116,7 @@ tasks {
         from(contents)
     }
     build {
-        dependsOn(fatJar) // Trigger fat jar creation during build
+        dependsOn(fatJar)
     }
 }
 
@@ -181,19 +125,12 @@ tasks.test {
     useJUnitPlatform()
 }
 
-/*tasks.named<BuildNativeImageTask>("nativeCompile") {
-    classpathJar.set(myFatJar.flatMap { it.archiveFile })
-}*/
-
 graalvmNative {
     binaries {
         named("main") {
-            //mainClass.set("com.netapp.spark.SparkCodeSubmissionServer")
             mainClass.set("com.netapp.spark.NotebookInitContainer")
             jvmArgs.addAll(theJvmArgs)
-            //runtimeArgs.addAll(listOf("9001"))
             useFatJar.set(true)
-            //zip64.set(true)
         }
     }
 }

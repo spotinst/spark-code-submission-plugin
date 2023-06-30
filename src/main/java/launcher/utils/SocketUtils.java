@@ -7,11 +7,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Random;
 
-//import org.apache.toree.utils.LogLike;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class SocketUtils /*implements LogLike*/ {
+public class SocketUtils {
     static Logger logger = LoggerFactory.getLogger(SocketUtils.class);
 
     private static final Random random = new Random(System.currentTimeMillis());
