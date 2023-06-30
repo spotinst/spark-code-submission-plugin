@@ -84,10 +84,6 @@ public class SparkConnectWebsocketTranscodeDriverPlugin implements org.apache.sp
                             if (read == -1) {
                                 break;
                             } else {
-                                        /*if (webSocket.isInputClosed() || webSocket.isOutputClosed()) {
-                                            webSocket.sendClose(200, "Spark Connect closed");
-                                            webSocket = getWebSocket(channel);
-                                        }*/
                                 webSocket.sendBinary(ByteBuffer.wrap(bba, 0, read+offset), true);
                             }
                             offset = 0;

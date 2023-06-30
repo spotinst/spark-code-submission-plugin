@@ -3,10 +3,8 @@ package com.netapp.spark;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.fabric8.kubernetes.api.model.Pod;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
-import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.undertow.Undertow;
 
 import io.kubernetes.client.openapi.ApiException;
@@ -173,12 +171,8 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
         args.addAll(arguments);
         var pb  = new ProcessBuilder(args);
         if (dir!=null) pb.directory(dir.toFile());
-        //pb.redirectErrorStream(true);
         pb.redirectError(ProcessBuilder.Redirect.INHERIT);
         if (inheritOutput) pb.redirectOutput(ProcessBuilder.Redirect.INHERIT);
-
-        //pb.redirectError(ProcessBuilder.Redirect.to(Path.of("python-err.log").toFile()));
-        //pb.redirectOutput(ProcessBuilder.Redirect.to(Path.of("python-out.log").toFile()));
 
         var env = pb.environment();
         if (environment != null) env.putAll(environment);
@@ -328,11 +322,6 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 break;
             case COMMAND:
                 var processName = codeSubmission.code();
-                /*args.add("console");
-                args.add("--kernel");
-                args.add("sparkmagic_kernels.pysparkkernel");
-                args.add("--existing");
-                args.add("kernel-" + pyport + ".json");*/
                 runProcess(codeSubmission.arguments(), codeSubmission.environment(), processName);
                 break;
             case COST:
@@ -423,10 +412,6 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                             if (arguments instanceof List) {
                                 var argumentsList = (List<String>) arguments;
                                 ToreeLauncher.main(argumentsList.toArray(String[]::new));
-                                /*var args = new ArrayList<String>();
-                                args.add("src/main/resources/launch_ipykernel.py");
-                                args.addAll(argumentsList);
-                                runProcess(args, Collections.emptyMap(), "python3");*/
                             }
                         }
                     } else {
@@ -452,19 +437,6 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
     }
 
     void handleWebsocketRequest(WebSocketHttpExchange exchange, WebSocketChannel channel) {
-        /*if (exchange.getRequestParameters().containsKey("grpc")) {
-            var grpcList = exchange.getRequestParameters().get("grpc");
-            if (grpcList.size() > 0) {
-                grpcPort = Integer.parseInt(grpcList.get(0));
-            }
-        }
-        if (exchange.getRequestParameters().containsKey("hive")) {
-            var hiveList = exchange.getRequestParameters().get("hive");
-            if (hiveList.size() > 0) {
-                hivePort = Integer.parseInt(hiveList.get(0));
-            }
-        }*/
-
         try {
             var sparkReceiveListener = new SparkReceiveListener(virtualThreads, channel, portMap);
             channel.getReceiveSetter().set(sparkReceiveListener);
@@ -549,7 +521,6 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
 
     String getClusterId(String appName) throws IOException, ApiException {
         var client = Config.defaultClient();
-        //client.setBasePath("https://your-kubernetes-cluster-url");
         var api = new CoreV1Api(client);
 
         System.err.println("Read pod "+appName);
@@ -612,13 +583,11 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
 
         System.err.println("Starting JupyterLab");
         var plist = List.of("lab", "--ip=0.0.0.0", "--NotebookApp.allow_origin=*", "--port="+port, "--NotebookApp.disable_check_xsrf=True", "--NotebookApp.port_retries=0",
-                        //"--ServerApp.base_url=/proxy/8889",
-                        //"--ServerApp.base_url=/apps/"+appName+"/notebook",
                         "--app-dir="+appDir,
                         "--ServerApp.base_url=/api/ocean/spark/cluster/"+clusterId+"/app/"+appName+"/notebook",
                         "--NotebookApp.token=''",
                         "--no-browser",
-                        "--notebook-dir=" + workDir); //, "--NotebookApp.token","''","--NotebookApp.disable_check_xsrf","True"));
+                        "--notebook-dir=" + workDir);
         runProcess(plist, Map.of(
                 "HOME", workDir.toString(),
                 "PYTHONPATH", installDir.toString(),
@@ -630,23 +599,6 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                 "JUPYTER_RUNTIME_DIR",
                 workDir.toString()), jupyter.toString(), true, null);
     }
-
-    /*void stuff() {
-        int pyPort = connectInfo.stream().filter(r -> r.getString(0).equals("py4j")).map(r -> r.getInt(1)).findFirst().orElseThrow();
-                var pythonPath = Path.of("/opt/spark/python");
-                var pythonPathEnv = System.getenv("PYTHONPATH");
-                if (pythonPathEnv != null && !pythonPathEnv.isEmpty()) {
-                    pythonPath = pythonPath.resolve(pythonPathEnv);
-                }
-                var pythonPathStr = pythonPath.toString();
-                logger.info("Forwarding PYTHONPATH: " + pythonPathStr);
-                sc.conf().set("spark.executorEnv.PYTHONPATH", pythonPathStr);
-                sc.conf().set("spark.yarn.appMasterEnv.PYTHONPATH", pythonPathStr);
-                sc.conf().set("spark.driverEnv.PYTHONPATH", pythonPathStr);
-                var grpcPort = Integer.parseInt(sc.conf().get("spark.connect.grpc.binding.port", "15002"));
-                var hivePortStr = System.getenv("HIVE_SERVER2_THRIFT_PORT");
-                var hivePort = Integer.parseInt((hivePortStr == null || hivePortStr.isEmpty()) ? "10000" : hivePortStr);
-    }*/
 
     void initConnections(SparkSession sparkSession, boolean useHive, List<Row> connectInfo) {
         if (useHive) {
@@ -727,10 +679,6 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     logger.info("No default code server port: " + useJupyterServer, e);
                 }
                 int jupyterServerPortFinal = jupyterServerPort;
-                //var applicationId = sc.applicationId();
-                //var appName = sc.appName();
-                //var appId = sc.conf().getAppId();
-                //logger.info("Starting jupyter server for application: " + applicationId + " " + appName + " " + appId);
                 var hostName = InetAddress.getLocalHost().getHostName();
                 logger.info("Starting jupyter server for host: " + hostName);
                 var appId = hostName.substring(0,hostName.lastIndexOf('-'));
@@ -766,7 +714,6 @@ public class SparkCodeSubmissionDriverPlugin implements org.apache.spark.api.plu
                     });
                 }
             }
-            //stuff();
             startCodeSubmissionServer(sc);
         } catch (RuntimeException e) {
             logger.error("Failed to start code submission server at port: " + port, e);

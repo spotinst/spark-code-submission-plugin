@@ -28,8 +28,6 @@ public class SparkReceiveListener extends AbstractReceiveListener {
 
     void init(int port) throws IOException {
         first = false;
-        //int port = bb.get(0) == 1 ? hivePort : grpcPort;
-        //System.err.println(bb.get(0) + " " + bb.get(1) + " " + bb.get(2) + " " + bb.get(3) + " " + bb.get(4) + " " + bb.get(5) + " " + bb.get(6));
         int nport = portMap.getOrDefault(port, port);
         if (port == nport+10) {
             clientSocket.connect(new InetSocketAddress("localhost", nport));
@@ -80,9 +78,6 @@ public class SparkReceiveListener extends AbstractReceiveListener {
     @Override
     protected void onCloseMessage(CloseMessage cm, WebSocketChannel channel) {
         try {
-            System.err.println("close server");
-            //clientOutput.close();
-            //clientInput.close();
             clientSocket.shutdownInput();
             clientSocket.close();
             super.onCloseMessage(cm, channel);
@@ -123,16 +118,4 @@ public class SparkReceiveListener extends AbstractReceiveListener {
             throw new RuntimeException(e);
         }
     }
-
-    /*var codeSubmissionStr = message.getData();
-        try {
-            var codeSubmission = mapper.readValue(codeSubmissionStr, CodeSubmission.class);
-            var response = submitCode(session, codeSubmission);
-            WebSockets.sendTextBlocking(response, channel);
-        } catch (IOException | ClassNotFoundException | NoSuchMethodException | URISyntaxException |
-                 ExecutionException | InterruptedException e) {
-            logger.error("Failed to parse code submission", e);
-            WebSockets.sendText("Failed to parse code submission", channel, null);
-        }
-    }*/
 }
